@@ -20,12 +20,16 @@ export type Lead = {
   description?: string;
   notes?: LeadNote[];
   createdAt?: string;
+  url?: string;
+  isSaved?: boolean;
+  isDuplicate?: boolean;
 };
 
 export type ChatMessage = {
   role: 'assistant' | 'user';
   content: string;
   leads?: Lead[] | null;
+  isStreaming?: boolean;
 };
 
 export type ChatToolResult = {

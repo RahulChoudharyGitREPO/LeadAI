@@ -35,20 +35,20 @@ import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { API_BASE_URL, SOCKET_URL } from '@/lib/api';
-import type { Lead } from '@/lib/types';
+import type { Lead, ChatMessage } from '@/lib/types';
 
 
 const API_URL = API_BASE_URL;
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', content: "Hello! I'm your AI Lead Discovery expert. I can search the live web for new business leads. Where should we look today?" }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   
-  const [lastScan, setLastScan] = useState(null);
+  const [lastScan, setLastScan] = useState<number | null>(null);
   const [timeAgoStr, setTimeAgoStr] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isClearChatOpen, setIsClearChatOpen] = useState(false);
@@ -126,7 +126,7 @@ export default function ChatPage() {
   };
 
   const confirmClearChat = () => {
-    const defaultMsg = [{ role: 'assistant', content: "Hello! I'm your AI Lead Discovery expert. I can search the live web for new business leads. Where should we look today?" }];
+    const defaultMsg: ChatMessage[] = [{ role: 'assistant', content: "Hello! I'm your AI Lead Discovery expert. I can search the live web for new business leads. Where should we look today?" }];
     setMessages(defaultMsg);
     sessionStorage.removeItem('aiChatMessages');
     setLastScan(null);
@@ -165,8 +165,8 @@ export default function ChatPage() {
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    const userMsg = { role: 'user', content: input };
-    const placeholderMsg = { role: 'assistant', content: 'Searching...', leads: [], isStreaming: true };
+    const userMsg: ChatMessage = { role: 'user', content: input };
+    const placeholderMsg: ChatMessage = { role: 'assistant', content: 'Searching...', leads: [], isStreaming: true };
     setMessages(prev => [...prev, userMsg, placeholderMsg]);
     setInput('');
     setLoading(true);
@@ -187,16 +187,16 @@ export default function ChatPage() {
         return newMsgs;
       });
 
-      setLastScan(new Date());
+      setLastScan(new Date().getTime());
       setTimeAgoStr('Just now');
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting to the discovery engine. Please check your connection." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting to the discovery engine. Please check your connection." } as ChatMessage]);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveLead = async (msgIdx, leadIdx, lead) => {
+  const saveLead = async (msgIdx: number, leadIdx: number, lead: Lead) => {
     try {
       await axios.post(`${API_URL}/leads`, {
         ...lead,
