@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { API_BASE_URL, SOCKET_URL } from '@/lib/api';
+import type { Lead } from '@/lib/types';
 
 
 const API_URL = API_BASE_URL;
