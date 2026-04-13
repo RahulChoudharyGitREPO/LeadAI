@@ -27,7 +27,9 @@ import {
 import axios from 'axios';
 import type { Lead } from '@/lib/types';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '@/lib/api';
+
+const API_URL = API_BASE_URL;
 
 export default function DashboardOverview() {
   const [leads, setLeads] = useState<Lead[]>([]);

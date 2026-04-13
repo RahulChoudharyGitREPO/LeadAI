@@ -12,7 +12,9 @@ import {
 import { PieChart as PieChartIcon, Target, Users, Globe2, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '@/lib/api';
+
+const API_URL = API_BASE_URL;
 
 const SCORE_COLORS = {
   Hot: '#f97316', // orange-500

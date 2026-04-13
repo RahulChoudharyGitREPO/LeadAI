@@ -42,7 +42,9 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import type { Lead, LeadStatus } from '@/lib/types';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '@/lib/api';
+
+const API_URL = API_BASE_URL;
 const LEAD_STATUSES: LeadStatus[] = ['new', 'contacted', 'booked', 'closed'];
 
 export default function LeadsPage() {

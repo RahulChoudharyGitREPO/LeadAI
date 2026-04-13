@@ -19,7 +19,9 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import type { ChatMessage, ChatToolResult, Lead } from '@/lib/types';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '@/lib/api';
+
+const API_URL = API_BASE_URL;
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);

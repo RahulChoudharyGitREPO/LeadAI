@@ -34,9 +34,10 @@ import {
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { toast } from 'sonner';
-import type { Lead } from '@/lib/types';
+import { API_BASE_URL, SOCKET_URL } from '@/lib/api';
 
-const API_URL = 'http://localhost:5000/api';
+
+const API_URL = API_BASE_URL;
 
 export default function ChatPage() {
   const [messages, setMessages] = useState([
@@ -75,7 +76,7 @@ export default function ChatPage() {
   // WebSocket Live Streaming
   useEffect(() => {
     import('socket.io-client').then(({ default: io }) => {
-      const socket = io('http://localhost:5000');
+      const socket = io(SOCKET_URL);
       
       socket.on('lead_stream', (lead: Lead) => {
         setMessages(prev => {

@@ -23,7 +23,9 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import type { LeadScore, LeadStatus } from '@/lib/types';
 
-const API_URL = 'http://localhost:5000/api';
+import { API_BASE_URL } from '@/lib/api';
+
+const API_URL = API_BASE_URL;
 
 type LeadFormData = {
   name: string;
