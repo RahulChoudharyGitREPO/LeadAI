@@ -15,13 +15,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import axios from 'axios';
 import { toast } from 'sonner';
 import type { ChatMessage, ChatToolResult, Lead } from '@/lib/types';
-
-import { API_BASE_URL } from '@/lib/api';
-
-const API_URL = API_BASE_URL;
+import { useApiClient } from '@/lib/api';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,6 +27,7 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { api, isLoaded, userId } = useApiClient();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -40,6 +37,11 @@ export default function ChatWidget() {
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
+    if (!isLoaded) return;
+    if (!userId) {
+      toast.error('Please sign in before searching leads');
+      return;
+    }
 
     const userMsg: ChatMessage = { role: 'user', content: input };
     setMessages(prev => [...prev, userMsg]);
@@ -47,7 +49,7 @@ export default function ChatWidget() {
     setLoading(true);
 
     try {
-      const res = await axios.post(`${API_URL}/chat`, {
+      const res = await api.post('/chat', {
         messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content }))
       });
 
@@ -77,8 +79,13 @@ export default function ChatWidget() {
   };
 
   const saveDiscoveredLead = async (lead: Lead) => {
+    if (!userId) {
+      toast.error('Please sign in before saving leads');
+      return;
+    }
+
     try {
-      await axios.post(`${API_URL}/leads`, {
+      await api.post('/leads', {
         ...lead,
         notes: [{ text: `Lead discovered via AI Web Search: ${lead.notes}` }]
       });

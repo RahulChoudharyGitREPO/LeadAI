@@ -32,13 +32,10 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
-import axios from 'axios';
 import { toast } from 'sonner';
-import { API_BASE_URL, SOCKET_URL } from '@/lib/api';
+import { SOCKET_URL, useApiClient } from '@/lib/api';
 import type { Lead, ChatMessage } from '@/lib/types';
 
-
-const API_URL = API_BASE_URL;
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -53,6 +50,8 @@ export default function ChatPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isClearChatOpen, setIsClearChatOpen] = useState(false);
   const [pitchLoadingId, setPitchLoadingId] = useState<string | null>(null);
+  const { api, isLoaded, userId } = useApiClient();
+  const chatStorageKey = userId ? `aiChatMessages:${userId}` : null;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -76,8 +75,10 @@ export default function ChatPage() {
 
   // WebSocket Live Streaming
   useEffect(() => {
+    if (!userId) return;
+
     import('socket.io-client').then(({ default: io }) => {
-      const socket = io(SOCKET_URL);
+      const socket = io(SOCKET_URL, { auth: { userId } });
       
       socket.on('lead_stream', (lead: Lead) => {
         setMessages(prev => {
@@ -96,13 +97,15 @@ export default function ChatPage() {
 
       return () => socket.disconnect();
     });
-  }, []);
+  }, [userId]);
 
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Load from session storage on mount
   useEffect(() => {
-    const savedMsg = sessionStorage.getItem('aiChatMessages');
+    if (!chatStorageKey) return;
+
+    const savedMsg = sessionStorage.getItem(chatStorageKey);
     if (savedMsg) {
       try { 
         const parsed = JSON.parse(savedMsg);
@@ -112,14 +115,14 @@ export default function ChatPage() {
       } catch {}
     }
     setIsInitialized(true);
-  }, []);
+  }, [chatStorageKey]);
 
   // Save to session storage when messages change, but ONLY after initialization
   useEffect(() => {
-    if (isInitialized) {
-      sessionStorage.setItem('aiChatMessages', JSON.stringify(messages));
+    if (isInitialized && chatStorageKey) {
+      sessionStorage.setItem(chatStorageKey, JSON.stringify(messages));
     }
-  }, [messages, isInitialized]);
+  }, [messages, isInitialized, chatStorageKey]);
 
   const clearChat = () => {
     setIsClearChatOpen(true);
@@ -128,7 +131,7 @@ export default function ChatPage() {
   const confirmClearChat = () => {
     const defaultMsg: ChatMessage[] = [{ role: 'assistant', content: "Hello! I'm your AI Lead Discovery expert. I can search the live web for new business leads. Where should we look today?" }];
     setMessages(defaultMsg);
-    sessionStorage.removeItem('aiChatMessages');
+    if (chatStorageKey) sessionStorage.removeItem(chatStorageKey);
     setLastScan(null);
     setTimeAgoStr('');
     setIsClearChatOpen(false);
@@ -164,6 +167,11 @@ export default function ChatPage() {
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
+    if (!isLoaded) return;
+    if (!userId) {
+      toast.error('Please sign in before searching leads');
+      return;
+    }
 
     const userMsg: ChatMessage = { role: 'user', content: input };
     const placeholderMsg: ChatMessage = { role: 'assistant', content: 'Searching...', leads: [], isStreaming: true };
@@ -172,7 +180,7 @@ export default function ChatPage() {
     setLoading(true);
 
     try {
-      const res = await axios.post(`${API_URL}/chat`, {
+      const res = await api.post('/chat', {
         messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content }))
       });
 
@@ -197,8 +205,13 @@ export default function ChatPage() {
   };
 
   const saveLead = async (msgIdx: number, leadIdx: number, lead: Lead) => {
+    if (!userId) {
+      toast.error('Please sign in before saving leads');
+      return;
+    }
+
     try {
-      await axios.post(`${API_URL}/leads`, {
+      await api.post('/leads', {
         ...lead,
         notes: [{ text: `Saved via AI Discovery Hub. Source: ${lead.url || 'Web Search'}` }]
       });
@@ -226,7 +239,7 @@ export default function ChatPage() {
     
     setPitchLoadingId(lead.name);
     try {
-      const res = await axios.post(`${API_URL}/chat/generate-pitch`, {
+      const res = await api.post('/chat/generate-pitch', {
         leadName: lead.name,
         service: lead.service,
         description: lead.description || lead.notes?.[0]?.text,

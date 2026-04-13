@@ -19,13 +19,9 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Plus } from 'lucide-react';
-import axios from 'axios';
 import { toast } from 'sonner';
 import type { LeadScore, LeadStatus } from '@/lib/types';
-
-import { API_BASE_URL } from '@/lib/api';
-
-const API_URL = API_BASE_URL;
+import { useApiClient } from '@/lib/api';
 
 type LeadFormData = {
   name: string;
@@ -42,6 +38,7 @@ type LeadFormModalProps = {
 
 export default function LeadFormModal({ onLeadAdded }: LeadFormModalProps) {
   const [open, setOpen] = useState(false);
+  const { api, isLoaded, userId } = useApiClient();
   const [formData, setFormData] = useState<LeadFormData>({
     name: '',
     phone: '',
@@ -53,8 +50,14 @@ export default function LeadFormModal({ onLeadAdded }: LeadFormModalProps) {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!isLoaded) return;
+    if (!userId) {
+      toast.error('Please sign in before saving leads');
+      return;
+    }
+
     try {
-      await axios.post(`${API_URL}/leads`, {
+      await api.post('/leads', {
         ...formData,
         notes: [{ text: formData.notes || 'Manually added' }]
       });

@@ -21,6 +21,13 @@ const io = new Server(server, {
 });
 app.set('io', io);
 
+io.on('connection', (socket) => {
+  const userId = socket.handshake.auth?.userId || socket.handshake.query?.userId;
+  if (userId) {
+    socket.join(userId);
+  }
+});
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());

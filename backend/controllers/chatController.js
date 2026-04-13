@@ -8,6 +8,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const getUserId = (req) => req.get('x-user-id') || req.body.userId;
+
 const SYSTEM_PROMPT = `
 You are an advanced AI Sales & Discovery Assistant for an AI Customer Conversion System.
 
@@ -62,6 +64,11 @@ const TOOLS = [
 
 const processChat = async (req, res) => {
   try {
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: 'User is required' });
+    }
+
     const { messages } = req.body;
     const io = req.app.get('io');
 
@@ -83,7 +90,7 @@ const processChat = async (req, res) => {
         console.log(`[CHAT] Tool called: ${toolCall.function.name}`, args);
 
         if (toolCall.function.name === 'query_database_leads') {
-          const filter = {};
+          const filter = { userId };
           if (args.status && args.status !== 'all') filter.status = args.status;
           if (args.score && args.score !== 'all') filter.leadScore = args.score;
           if (args.query) {
@@ -158,7 +165,8 @@ const processChat = async (req, res) => {
                 if (!lead.name) continue;
 
                 // Deduplication check
-                const existing = await Lead.findOne({ 
+                const existing = await Lead.findOne({
+                  userId,
                   $or: [
                     { name: lead.name }, 
                     { phone: { $ne: 'N/A', $eq: lead.phone } }
@@ -180,7 +188,7 @@ const processChat = async (req, res) => {
                     isSaved: false
                   };
                   discoveredLeads.push(finalLeadData);
-                  if (io) io.emit('lead_stream', finalLeadData);
+                  if (io) io.to(userId).emit('lead_stream', finalLeadData);
                 } else {
                   const finalLeadData = {
                     ...existing._doc,
@@ -189,7 +197,7 @@ const processChat = async (req, res) => {
                     isSaved: true
                   };
                   discoveredLeads.push(finalLeadData);
-                  if (io) io.emit('lead_stream', finalLeadData);
+                  if (io) io.to(userId).emit('lead_stream', finalLeadData);
                 }
               }
             }
@@ -227,8 +235,14 @@ const processChat = async (req, res) => {
 
 const saveLead = async (req, res) => {
   try {
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: 'User is required' });
+    }
+
     const { name, service, date, location, phone, leadScore, status, notes } = req.body;
     const newLead = new Lead({
+      userId,
       name, service, date, location,
       phone: phone || 'N/A',
       status: status || 'new',

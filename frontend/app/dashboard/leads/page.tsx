@@ -38,13 +38,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import axios from 'axios';
 import { toast } from 'sonner';
 import type { Lead, LeadStatus } from '@/lib/types';
+import { useApiClient } from '@/lib/api';
 
-import { API_BASE_URL } from '@/lib/api';
-
-const API_URL = API_BASE_URL;
 const LEAD_STATUSES: LeadStatus[] = ['new', 'contacted', 'booked', 'closed'];
 
 export default function LeadsPage() {
@@ -53,11 +50,19 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
+  const { api, isLoaded, userId } = useApiClient();
 
   const fetchLeads = useCallback(async () => {
+    if (!isLoaded) return;
+    if (!userId) {
+      setLeads([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/leads`, {
+      const res = await api.get('/leads', {
         params: { status: statusFilter, query: searchQuery }
       });
       setLeads(res.data);
@@ -67,7 +72,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter]);
+  }, [api, isLoaded, searchQuery, statusFilter, userId]);
 
   useEffect(() => {
     fetchLeads();
@@ -106,7 +111,7 @@ export default function LeadsPage() {
     if (!id) return;
 
     try {
-      await axios.patch(`${API_URL}/leads/${id}`, { status });
+      await api.patch(`/leads/${id}`, { status });
       toast.success(`Status: ${status}`);
       fetchLeads();
     } catch {
@@ -118,7 +123,7 @@ export default function LeadsPage() {
     if (!deleteLeadId) return;
 
     try {
-      await axios.delete(`${API_URL}/leads/${deleteLeadId}`);
+      await api.delete(`/leads/${deleteLeadId}`);
       toast.success('Lead permanently deleted');
       setDeleteLeadId(null);
       fetchLeads();

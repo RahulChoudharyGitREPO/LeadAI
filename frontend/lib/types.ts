@@ -20,6 +20,7 @@ export type Lead = {
   description?: string;
   notes?: LeadNote[];
   createdAt?: string;
+  userId?: string;
   url?: string;
   isSaved?: boolean;
   isDuplicate?: boolean;

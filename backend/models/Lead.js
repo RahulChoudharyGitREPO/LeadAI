@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const LeadSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
   name: { type: String, required: true },
   service: { type: String },
   date: { type: String },

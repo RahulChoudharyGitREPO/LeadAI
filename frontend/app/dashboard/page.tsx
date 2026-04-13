@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import LeadFormModal from '@/components/LeadFormModal';
@@ -24,21 +24,25 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import axios from 'axios';
 import type { Lead } from '@/lib/types';
-
-import { API_BASE_URL } from '@/lib/api';
-
-const API_URL = API_BASE_URL;
+import { useApiClient } from '@/lib/api';
 
 export default function DashboardOverview() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const { api, isLoaded, userId } = useApiClient();
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
+    if (!isLoaded) return;
+    if (!userId) {
+      setLeads([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await axios.get(`${API_URL}/leads`);
+      const res = await api.get('/leads');
       setLeads(res.data);
     } catch (error) {
       console.error(error);
@@ -46,11 +50,11 @@ export default function DashboardOverview() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, isLoaded, userId]);
 
   useEffect(() => {
     fetchLeads();
-  }, []);
+  }, [fetchLeads]);
 
   const stats = [
     { name: 'Total Leads', value: leads.length, icon: Users, color: 'bg-blue-500' },

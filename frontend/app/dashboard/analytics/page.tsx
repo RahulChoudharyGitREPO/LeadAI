@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
-import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip,
@@ -11,10 +10,7 @@ import {
 } from 'recharts';
 import { PieChart as PieChartIcon, Target, Users, Globe2, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-
-import { API_BASE_URL } from '@/lib/api';
-
-const API_URL = API_BASE_URL;
+import { useApiClient } from '@/lib/api';
 
 const SCORE_COLORS = {
   Hot: '#f97316', // orange-500
@@ -39,11 +35,19 @@ interface Stats {
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const { api, isLoaded, userId } = useApiClient();
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!userId) {
+      setStats(null);
+      setLoading(false);
+      return;
+    }
+
     const fetchStats = async () => {
       try {
-        const res = await axios.get(`${API_URL}/leads/stats`);
+        const res = await api.get('/leads/stats');
         setStats(res.data);
       } catch {
         toast.error('Failed to load real-time analytics.');
@@ -52,7 +56,7 @@ export default function AnalyticsPage() {
       }
     };
     fetchStats();
-  }, []);
+  }, [api, isLoaded, userId]);
 
   if (loading) {
     return (
