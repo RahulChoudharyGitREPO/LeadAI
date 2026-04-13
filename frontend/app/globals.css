@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: #FACC15;
+  --color-primary-dark: #EAB308;
+  --color-background-soft: #F8FAFC;
+  --color-background-alt: #F1F5F9;
+  --color-text-main: #0F172A;
+  --color-text-muted: #475569;
+
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+}
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 47 95% 53%; /* yellow-500 equivalent */
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 47 95% 53%;
+    --radius: 0.75rem;
+  }
+}
+
+body {
+  background-color: #F8FAFC;
+  color: #0F172A;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.subtle-shadow {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -5px rgba(0, 0, 0, 0.04);
+}
+
+.deep-shadow {
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+}
+
+.floating-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.floating-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+}
+
+.yellow-gradient {
+  background: linear-gradient(135deg, #FACC15 0%, #EAB308 100%);
+}
+
+.soft-yellow-bg {
+  background: radial-gradient(circle at top right, rgba(250, 204, 21, 0.05), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(250, 204, 21, 0.03), transparent 40%);
+}

@@ -1,0 +1,45 @@
+# Root .gitignore for LeadApp
+
+# dependencies
+**/node_modules
+/.pnp
+.pnp.*
+
+# testing
+**/coverage
+
+# next.js
+frontend/.next/
+frontend/out/
+
+# production
+**/build
+**/dist
+
+# env files (NEVER COMMIT THESE)
+.env
+.env.local
+.env.production
+frontend/.env*
+backend/.env*
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# IDE/Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# vercel
+.vercel
