@@ -7,8 +7,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "AI Customer Conversion System | Premium SaaS Dashboard",
-  description: "Automate your lead conversion with AI-powered guided chat.",
+  title: "ClientStream | AI-Powered Lead Discovery & CRM",
+  description: "Automate your lead generation with AI-powered discovery and CRM management.",
 };
 
 export default function RootLayout({

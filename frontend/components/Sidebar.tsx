@@ -29,7 +29,7 @@ export default function Sidebar() {
           <div className="w-10 h-10 yellow-gradient rounded-xl flex items-center justify-center subtle-shadow">
             <TrendingUp className="text-white w-6 h-6" />
           </div>
-          <span className="text-xl font-bold text-slate-900 tracking-tight">ConvertAI</span>
+          <span className="text-xl font-bold text-slate-900 tracking-tight">ClientStream</span>
         </div>
       </div>
 
