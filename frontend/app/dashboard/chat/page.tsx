@@ -156,10 +156,13 @@ export default function ChatPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, userId, sessions.length]);
 
+  const prevMsgCountRef = useRef(messages.length);
   useEffect(() => {
-    if (scrollRef.current) {
+    // Only scroll when new messages are added, not when leads are updated
+    if (messages.length > prevMsgCountRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+    prevMsgCountRef.current = messages.length;
   }, [messages]);
 
   // Timer for "Last scan: X mins ago"
@@ -286,10 +289,27 @@ export default function ChatPage() {
     }
 
     try {
-      await api.post('/leads', {
-        ...lead,
+      const payload = {
+        name: lead.name,
+        phone: lead.phone || 'N/A',
+        service: lead.service || '',
+        location: lead.location || '',
+        email: lead.email || '',
+        website: lead.website || '',
+        linkedIn: lead.linkedIn || '',
+        description: lead.description || '',
+        source: lead.source || 'web',
+        status: 'new',
+        leadScore: lead.leadScore || 'Warm',
+        aiScore: lead.aiScore || null,
+        intentSignals: lead.intentSignals || [],
+        opportunityLevel: lead.opportunityLevel || 'medium',
+        reason: lead.reason || '',
+        url: lead.url || '',
         notes: [{ text: `Saved via AI Discovery Hub. Source: ${lead.url || 'Web Search'}` }]
-      });
+      };
+
+      await api.post('/leads', payload);
       toast.success(`${lead.name} added to CRM`);
       
       // Update local state to show as saved
@@ -304,7 +324,9 @@ export default function ChatPage() {
         newMsgs[msgIdx] = msg;
         return newMsgs;
       });
-    } catch {
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Save lead error:', errorMsg);
       toast.error('Failed to save lead');
     }
   };
@@ -355,11 +377,11 @@ export default function ChatPage() {
         </button>
         <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
           {sessions.map(session => (
-            <button
+            <div
               key={session._id}
               onClick={() => loadSession(session._id)}
               className={cn(
-                "w-full text-left p-3 rounded-xl transition-all group flex items-center justify-between",
+                "w-full text-left p-3 rounded-xl transition-all group flex items-center justify-between cursor-pointer",
                 activeSessionId === session._id
                   ? "bg-yellow-400/20 border border-yellow-400/30 shadow-sm"
                   : "hover:bg-white/60 border border-transparent"
@@ -378,7 +400,7 @@ export default function ChatPage() {
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
-            </button>
+            </div>
           ))}
           {sessions.length === 0 && (
             <p className="text-xs text-slate-400 text-center py-8 font-medium">No previous chats</p>

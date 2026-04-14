@@ -21,14 +21,16 @@ const LeadSchema = new mongoose.Schema({
     enum: ['Hot', 'Warm', 'Cold'], 
     default: 'Warm' 
   },
-  aiScore: { type: Number, min: 1, max: 10 },
+  aiScore: { type: Number, default: null },
   intentSignals: [String],
   opportunityLevel: { 
     type: String, 
     enum: ['high', 'medium', 'low'], 
     default: 'medium' 
   },
+  reason: { type: String, default: '' },
   description: { type: String, default: '' },
+  url: { type: String, default: '' },
   notes: [{ 
     text: String, 
     createdAt: { type: Date, default: Date.now } 
@@ -47,11 +49,10 @@ LeadSchema.index({ userId: 1, leadScore: 1 });
 LeadSchema.index({ userId: 1, name: 1, phone: 1 }, { unique: false });
 
 // === PRE-SAVE: trim data size ===
-LeadSchema.pre('save', function (next) {
+LeadSchema.pre('save', function () {
   if (this.description && this.description.length > 200) {
     this.description = this.description.slice(0, 200);
   }
-  // Trim notes text too
   if (this.notes && this.notes.length > 0) {
     this.notes.forEach(note => {
       if (note.text && note.text.length > 300) {
@@ -59,7 +60,6 @@ LeadSchema.pre('save', function (next) {
       }
     });
   }
-  next();
 });
 
 // === STATIC: cleanup old leads (keep last 5000 per user) ===

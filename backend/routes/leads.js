@@ -109,7 +109,8 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(lead);
   } catch (error) {
-    res.status(400).json({ error: 'Failed to create lead' });
+    console.error('[LEADS POST] Error:', error.message, error.errors ? JSON.stringify(error.errors) : '');
+    res.status(400).json({ error: 'Failed to create lead', details: error.message });
   }
 });
 
