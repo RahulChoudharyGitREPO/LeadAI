@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Navbar from '@/components/Navbar';
 import { 
   Send, 
   Loader2,
@@ -260,40 +258,34 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-100/50 soft-yellow-bg">
-      <Sidebar />
-      <main className="flex-1 ml-64 min-h-screen flex flex-col h-screen">
-        <Navbar />
-        
-        <div className="flex-1 overflow-hidden p-8 flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">AI Discovery Hub</h1>
-              <p className="text-slate-500 mt-1 font-medium">Real-time business intelligence and lead generation.</p>
-            </div>
-            <div className="flex flex-col items-end gap-2 text-right">
-               <div className="flex items-center gap-3">
-                 <Button onClick={clearChat} variant="ghost" size="sm" className="h-9 px-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
-                   <Trash2 className="w-4 h-4 mr-2" /> Clear Note
-                 </Button>
-                 <Button onClick={exportToCSV} variant="outline" size="sm" className="h-9 px-3 border-slate-200 text-slate-600 bg-white shadow-sm hover:shadow-md rounded-lg">
-                   <FileDown className="w-4 h-4 mr-2" /> Export Discovered
-                 </Button>
-                 <div className="flex items-center gap-2 bg-green-500/10 px-4 py-2 rounded-xl border border-green-500/20 shadow-sm ml-2">
-                   <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                   <span className="text-xs font-bold text-green-700 uppercase tracking-widest">Discovery Engine Active</span>
-                 </div>
-               </div>
-               {timeAgoStr && (
-                 <span className="text-[10px] text-slate-400 font-bold mt-2 tracking-widest uppercase">
-                   Last scan: {timeAgoStr}
-                 </span>
-               )}
-            </div>
-          </div>
-
-          <div className="flex-1 glass rounded-[2.5rem] border-none subtle-shadow flex flex-col overflow-hidden">
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-10 space-y-8">
+    <div className="flex-1 overflow-hidden p-4 md:p-8 flex flex-col gap-6 h-[calc(100vh-80px)]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">AI Discovery Hub</h1>
+          <p className="text-slate-500 mt-1 font-medium text-sm md:text-base">Real-time business intelligence and lead generation.</p>
+        </div>
+        <div className="flex flex-col items-start md:items-end gap-2 text-left md:text-right w-full md:w-auto">
+           <div className="flex flex-wrap items-center gap-3">
+             <Button onClick={clearChat} variant="ghost" size="sm" className="h-9 px-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg text-xs md:text-sm">
+               <Trash2 className="w-4 h-4 mr-2" /> Clear
+             </Button>
+             <Button onClick={exportToCSV} variant="outline" size="sm" className="h-9 px-3 border-slate-200 text-slate-600 bg-white shadow-sm hover:shadow-md rounded-lg text-xs md:text-sm">
+               <FileDown className="w-4 h-4 mr-2" /> Export
+             </Button>
+             <div className="flex items-center gap-2 bg-green-500/10 px-3 md:px-4 py-2 rounded-xl border border-green-500/20 shadow-sm">
+               <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+               <span className="text-[10px] md:text-xs font-bold text-green-700 uppercase tracking-widest">Active</span>
+             </div>
+           </div>
+           {timeAgoStr && (
+             <span className="text-[10px] text-slate-400 font-bold mt-2 tracking-widest uppercase">
+               Last scan: {timeAgoStr}
+             </span>
+           )}
+        </div>
+      </div>
+          <div className="flex-1 glass rounded-3xl md:rounded-[2.5rem] border-none subtle-shadow flex flex-col overflow-hidden">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-10 space-y-8">
               {messages.map((msg, msgIdx) => (
                 <div key={msgIdx} className={cn(
                   "flex flex-col gap-2 max-w-[85%]",
@@ -455,10 +447,8 @@ export default function ChatPage() {
                 </Button>
               </div>
               <p className="text-[10px] text-center text-slate-400 mt-4 font-bold tracking-[0.2em] uppercase">Built with Live Web Scraping</p>
-            </div>
+             </div>
           </div>
-        </div>
-      </main>
 
       {/* View Details Modal */}
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>

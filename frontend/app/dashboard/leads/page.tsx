@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Navbar from '@/components/Navbar';
 import LeadFormModal from '@/components/LeadFormModal';
 import { 
   Phone,
@@ -133,24 +131,21 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-100/50 soft-yellow-bg">
-      <Sidebar />
-      <main className="flex-1 ml-64 min-h-screen">
-        <Navbar />
-        <div className="p-8 space-y-8">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Leads CRM</h1>
-              <p className="text-slate-500 mt-1 font-medium italic">Manage every conversion in one place.</p>
-            </div>
-            <div className="flex gap-4">
-               <Button onClick={exportToCSV} variant="outline" className="h-11 rounded-xl bg-white/50 border-none shadow-sm flex items-center gap-2 hover:bg-white transition-all font-bold">
-                  <FileDown className="w-4 h-4" /> Export CSV
-               </Button>
-               <LeadFormModal onLeadAdded={fetchLeads} />
-            </div>
-          </div>
+    <>
+      <div className="p-4 md:p-8 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Leads CRM</h1>
+          <p className="text-slate-500 mt-1 font-medium italic">Manage every conversion in one place.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+           <Button onClick={exportToCSV} variant="outline" className="h-11 px-4 rounded-xl bg-white/50 border-none shadow-sm flex items-center gap-2 hover:bg-white transition-all font-bold text-sm">
+              <FileDown className="w-4 h-4" /> Export
+           </Button>
+           <LeadFormModal onLeadAdded={fetchLeads} />
+        </div>
+      </div>
 
           {/* Filtering Bar */}
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white/40 p-4 rounded-2xl subtle-shadow border-none">
@@ -278,8 +273,7 @@ export default function LeadsPage() {
               </Table>
             </div>
           </div>
-        </div>
-      </main>
+    </div>
 
       <Dialog open={!!deleteLeadId} onOpenChange={(open) => !open && setDeleteLeadId(null)}>
         <DialogContent className="glass border-none shadow-2xl p-6 sm:max-w-md">
@@ -295,6 +289,6 @@ export default function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

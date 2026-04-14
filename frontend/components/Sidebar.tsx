@@ -19,11 +19,20 @@ const navItems = [
   { name: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 glass border-r border-white/20 z-50 flex flex-col">
+    <>
+      <aside className={cn(
+        "fixed left-0 top-0 h-screen w-64 glass border-r border-white/20 z-50 flex flex-col transition-transform duration-300 md:translate-x-0 outline-none focus:outline-none",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
       <div className="p-8">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 yellow-gradient rounded-xl flex items-center justify-center subtle-shadow">
@@ -42,6 +51,7 @@ export default function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
                 isActive 
@@ -69,5 +79,6 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+  </>
   );
 }

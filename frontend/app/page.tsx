@@ -15,12 +15,12 @@ export default function Home() {
           <span>The New Standard in Lead Conversion</span>
         </div>
         
-        <h1 className="text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-tight">
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-tight px-2">
           Convert Visitors into <br />
           <span className="text-yellow-500">Premium Customers</span>
         </h1>
         
-        <p className="text-xl text-slate-500 max-w-2xl mx-auto font-medium">
+        <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto font-medium px-4">
           Our AI-powered guided chat system captures leads, scores them instantly, 
           and handles your bookings while you sleep.
         </p>

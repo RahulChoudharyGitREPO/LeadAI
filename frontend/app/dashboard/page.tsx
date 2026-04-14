@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Navbar from '@/components/Navbar';
 import LeadFormModal from '@/components/LeadFormModal';
 import Link from 'next/link';
 import { 
@@ -65,19 +63,15 @@ export default function DashboardOverview() {
   const recentLeads = leads.slice(0, 5);
 
   return (
-    <div className="min-h-screen flex bg-slate-100/50 soft-yellow-bg">
-      <Sidebar />
-      <main className="flex-1 ml-64 min-h-screen">
-        <Navbar />
-        <div className="p-8 space-y-10">
-          {/* Header Section */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Overview</h1>
-              <p className="text-slate-500 mt-2 text-lg">Real-time performance summary.</p>
-            </div>
-            <LeadFormModal onLeadAdded={fetchLeads} />
-          </div>
+    <div className="p-4 md:p-8 space-y-10">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Overview</h1>
+          <p className="text-slate-500 mt-2 text-base md:text-lg">Real-time performance summary.</p>
+        </div>
+        <LeadFormModal onLeadAdded={fetchLeads} />
+      </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -102,7 +96,7 @@ export default function DashboardOverview() {
                 </Link>
               </div>
               
-              <div className="px-2 pb-6">
+              <div className="px-2 pb-6 overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-transparent">
                     <TableRow className="hover:bg-transparent border-none">
@@ -192,9 +186,7 @@ export default function DashboardOverview() {
                 <Plus className="absolute -right-6 -bottom-6 w-32 h-32 opacity-10 group-hover:scale-110 transition-transform duration-500" />
               </Card>
             </div>
-          </div>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }

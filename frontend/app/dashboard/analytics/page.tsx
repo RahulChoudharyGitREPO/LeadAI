@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Navbar from '@/components/Navbar';
 import { toast } from 'sonner';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip,
@@ -60,14 +58,8 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex bg-slate-100/50 soft-yellow-bg">
-        <Sidebar />
-        <main className="flex-1 ml-64 min-h-screen flex flex-col h-screen relative">
-          <Navbar />
-          <div className="flex-1 flex items-center justify-center">
-             <Loader2 className="w-10 h-10 animate-spin text-yellow-500" />
-          </div>
-        </main>
+      <div className="flex-1 flex items-center justify-center min-h-[400px]">
+         <Loader2 className="w-10 h-10 animate-spin text-yellow-500" />
       </div>
     );
   }
@@ -87,12 +79,7 @@ export default function AnalyticsPage() {
   const totalWebFound = stats?.sources?.web || 0;
 
   return (
-    <div className="min-h-screen flex bg-slate-100/50 soft-yellow-bg">
-      <Sidebar />
-      <main className="flex-1 ml-64 min-h-screen flex flex-col h-screen relative overflow-y-auto">
-        <Navbar />
-        
-        <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
+    <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto w-full">
           <div>
             <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
               <PieChartIcon className="w-8 h-8 text-yellow-500" />
@@ -218,8 +205,6 @@ export default function AnalyticsPage() {
             </Card>
 
           </div>
-        </div>
-      </main>
     </div>
   );
 }
