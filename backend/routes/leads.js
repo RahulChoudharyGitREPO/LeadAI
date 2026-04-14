@@ -51,10 +51,10 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET all leads with advanced filtering
+// GET all leads with advanced filtering + PAGINATION
 router.get('/', async (req, res) => {
   try {
-    const { status, query, score } = req.query;
+    const { status, query, score, page = 1, limit = 50 } = req.query;
     let filter = { userId: req.userId };
 
     if (status && status !== 'all') filter.status = status;
@@ -67,28 +67,73 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    const leads = await Lead.find(filter).sort({ createdAt: -1 });
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [leads, total] = await Promise.all([
+      Lead.find(filter)
+        .sort({ aiScore: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Lead.countDocuments(filter)
+    ]);
+
     res.json(leads);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch leads' });
   }
 });
 
-// POST new lead
+// POST new lead (with duplicate check)
 router.post('/', async (req, res) => {
   try {
+    // Check for duplicates by name + userId
+    const existing = await Lead.findOne({ 
+      userId: req.userId, 
+      name: { $regex: `^${(req.body.name || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+    });
+    if (existing) {
+      return res.status(409).json({ error: 'Lead already exists', lead: existing });
+    }
+
     const lead = new Lead({ ...req.body, userId: req.userId });
     await lead.save();
+
+    // Auto-cleanup: keep last 5000 leads
+    await Lead.cleanupOldLeads(req.userId);
+
     res.status(201).json(lead);
   } catch (error) {
     res.status(400).json({ error: 'Failed to create lead' });
   }
 });
 
-// POST bulk leads (for AI discovery)
+// POST bulk leads (with dedup + cleanup)
 router.post('/bulk', async (req, res) => {
   try {
-    const leads = await Lead.insertMany(req.body.map((lead) => ({ ...lead, userId: req.userId })));
+    const incoming = req.body.map(lead => ({ ...lead, userId: req.userId }));
+    
+    // Filter out duplicates against existing DB entries
+    const names = incoming.map(l => l.name?.toLowerCase()).filter(Boolean);
+    const existing = await Lead.find({ 
+      userId: req.userId, 
+      name: { $in: names.map(n => new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) }
+    }).select('name').lean();
+    const existingNames = new Set(existing.map(e => e.name.toLowerCase()));
+    
+    const unique = incoming.filter(l => !existingNames.has(l.name?.toLowerCase()));
+    
+    if (unique.length === 0) {
+      return res.json({ message: 'All leads already exist', inserted: 0 });
+    }
+
+    const leads = await Lead.insertMany(unique);
+    
+    // Auto-cleanup
+    await Lead.cleanupOldLeads(req.userId);
+    
     res.status(201).json(leads);
   } catch (error) {
     res.status(400).json({ error: 'Failed to create bulk leads' });

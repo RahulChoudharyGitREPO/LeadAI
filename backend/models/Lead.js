@@ -28,6 +28,7 @@ const LeadSchema = new mongoose.Schema({
     enum: ['high', 'medium', 'low'], 
     default: 'medium' 
   },
+  description: { type: String, default: '' },
   notes: [{ 
     text: String, 
     createdAt: { type: Date, default: Date.now } 
@@ -35,5 +36,51 @@ const LeadSchema = new mongoose.Schema({
   lastActivity: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
+
+// === INDEXES (fast search + filtering) ===
+LeadSchema.index({ name: 1 });
+LeadSchema.index({ phone: 1 });
+LeadSchema.index({ aiScore: -1 });
+LeadSchema.index({ userId: 1, createdAt: -1 });
+LeadSchema.index({ userId: 1, status: 1 });
+LeadSchema.index({ userId: 1, leadScore: 1 });
+LeadSchema.index({ userId: 1, name: 1, phone: 1 }, { unique: false });
+
+// === PRE-SAVE: trim data size ===
+LeadSchema.pre('save', function (next) {
+  if (this.description && this.description.length > 200) {
+    this.description = this.description.slice(0, 200);
+  }
+  // Trim notes text too
+  if (this.notes && this.notes.length > 0) {
+    this.notes.forEach(note => {
+      if (note.text && note.text.length > 300) {
+        note.text = note.text.slice(0, 300);
+      }
+    });
+  }
+  next();
+});
+
+// === STATIC: cleanup old leads (keep last 5000 per user) ===
+LeadSchema.statics.cleanupOldLeads = async function (userId, maxLeads = 5000) {
+  const count = await this.countDocuments({ userId });
+  if (count <= maxLeads) return 0;
+
+  const cutoff = await this.find({ userId })
+    .sort({ createdAt: -1 })
+    .skip(maxLeads)
+    .limit(1)
+    .select('createdAt')
+    .lean();
+
+  if (cutoff.length === 0) return 0;
+
+  const result = await this.deleteMany({ 
+    userId, 
+    createdAt: { $lte: cutoff[0].createdAt } 
+  });
+  return result.deletedCount;
+};
 
 module.exports = mongoose.model('Lead', LeadSchema);
