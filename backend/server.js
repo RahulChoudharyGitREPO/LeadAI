@@ -32,6 +32,15 @@ io.on('connection', (socket) => {
 app.use(cors());
 app.use(bodyParser.json());
 
+// Health Check
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString() 
+  });
+});
+
 // Routes
 app.use('/api/leads', leadsRoutes);
 app.use('/api/chat', chatRoutes);
