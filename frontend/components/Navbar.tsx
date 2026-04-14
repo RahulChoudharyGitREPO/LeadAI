@@ -20,15 +20,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           <Menu className="w-5 h-5" />
         </button>
       </div>
-      <div className="flex-1 max-w-sm ml-2 md:ml-0">
-        <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-yellow-500 transition-colors" />
-          <Input 
-            placeholder="Search..." 
-            className="pl-10 h-11 bg-white/50 border-white/40 focus:bg-white transition-all rounded-xl subtle-shadow"
-          />
-        </div>
-      </div>
+      <div className="flex-1" />
 
       <div className="flex items-center gap-6">
         <button className="relative p-2.5 rounded-xl bg-white/50 border border-white/40 text-slate-500 hover:text-yellow-600 hover:bg-white transition-all subtle-shadow group">

@@ -100,20 +100,13 @@ export default function ChatPage() {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [messages, activeSessionId, api, isLoaded, userId]);
 
-  // Create new session
-  const createNewSession = async () => {
-    if (!isLoaded || !userId) return;
-    try {
-      const res = await api.post('/chat/sessions', { title: 'New Chat', messages: DEFAULT_MSG });
-      setActiveSessionId(res.data._id);
-      setMessages(DEFAULT_MSG);
-      setLastScan(null);
-      setTimeAgoStr('');
-      fetchSessions();
-      setShowSessions(false);
-    } catch {
-      toast.error('Failed to create session');
-    }
+  // Create new session (local only — DB entry created on first message)
+  const createNewSession = () => {
+    setActiveSessionId(null);
+    setMessages(DEFAULT_MSG);
+    setLastScan(null);
+    setTimeAgoStr('');
+    setShowSessions(false);
   };
 
   // Load a session
@@ -146,11 +139,9 @@ export default function ChatPage() {
     }
   };
 
-  // Auto-create first session if none exists
+  // Auto-load most recent session on mount
   useEffect(() => {
-    if (isLoaded && userId && sessions.length === 0 && !activeSessionId) {
-      createNewSession();
-    } else if (isLoaded && userId && sessions.length > 0 && !activeSessionId) {
+    if (isLoaded && userId && sessions.length > 0 && !activeSessionId) {
       loadSession(sessions[0]._id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -256,6 +247,19 @@ export default function ChatPage() {
     setMessages(prev => [...prev, userMsg, placeholderMsg]);
     setInput('');
     setLoading(true);
+
+    // Lazy session creation: create DB session on first message
+    let sessionId = activeSessionId;
+    if (!sessionId) {
+      try {
+        const sessionRes = await api.post('/chat/sessions', { title: input.slice(0, 50), messages: [] });
+        sessionId = sessionRes.data._id;
+        setActiveSessionId(sessionId);
+        fetchSessions();
+      } catch {
+        console.error('Failed to create session');
+      }
+    }
 
     try {
       const res = await api.post('/chat', {
