@@ -89,13 +89,16 @@ router.get('/', async (req, res) => {
 // POST new lead (with duplicate check)
 router.post('/', async (req, res) => {
   try {
-    // Check for duplicates by name + userId
-    const existing = await Lead.findOne({ 
-      userId: req.userId, 
-      name: { $regex: `^${(req.body.name || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
-    });
-    if (existing) {
-      return res.status(409).json({ error: 'Lead already exists', lead: existing });
+    // Check for duplicates by name + userId (case insensitive)
+    const leadName = (req.body.name || '').trim();
+    if (leadName) {
+      const existing = await Lead.findOne({ 
+        userId: req.userId, 
+        name: { $regex: new RegExp('^' + leadName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') }
+      });
+      if (existing) {
+        return res.status(409).json({ error: 'Lead already exists', lead: existing });
+      }
     }
 
     const lead = new Lead({ ...req.body, userId: req.userId });
@@ -116,14 +119,12 @@ router.post('/bulk', async (req, res) => {
     const incoming = req.body.map(lead => ({ ...lead, userId: req.userId }));
     
     // Filter out duplicates against existing DB entries
-    const names = incoming.map(l => l.name?.toLowerCase()).filter(Boolean);
-    const existing = await Lead.find({ 
-      userId: req.userId, 
-      name: { $in: names.map(n => new RegExp(`^${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) }
-    }).select('name').lean();
-    const existingNames = new Set(existing.map(e => e.name.toLowerCase()));
+    const existingLeads = await Lead.find({ userId: req.userId })
+      .select('name')
+      .lean();
+    const existingNames = new Set(existingLeads.map(e => e.name?.toLowerCase()));
     
-    const unique = incoming.filter(l => !existingNames.has(l.name?.toLowerCase()));
+    const unique = incoming.filter(l => l.name && !existingNames.has(l.name.toLowerCase()));
     
     if (unique.length === 0) {
       return res.json({ message: 'All leads already exist', inserted: 0 });
@@ -136,6 +137,7 @@ router.post('/bulk', async (req, res) => {
     
     res.status(201).json(leads);
   } catch (error) {
+    console.error('[BULK] Error:', error.message);
     res.status(400).json({ error: 'Failed to create bulk leads' });
   }
 });

@@ -745,7 +745,7 @@ export default function ChatPage() {
         </DialogContent>
       </Dialog>
 
-      </div> {/* end main chat area */}
+      </div>
     </div>
   );
 }
