@@ -2,7 +2,9 @@ const { OpenAI } = require('openai');
 const Lead = require('../models/Lead');
 const { searchWeb } = require('../services/search.service');
 const { scrapePage } = require('../services/realScraper.service');
-const { extractLeadsFromText } = require('../services/extraction.service');
+const { extractLeadsFromText, batchScoreLeads } = require('../services/extraction.service');
+const { cleanAndDeduplicateLeads } = require('../services/cleaning.service');
+const { batchEnrichLeads } = require('../services/enrichment.service');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -179,6 +181,9 @@ const processChat = async (req, res) => {
                     service: lead.service || args.niche,
                     location: lead.location || args.location,
                     phone: lead.phone || 'N/A',
+                    email: lead.email || '',
+                    website: lead.website || '',
+                    linkedIn: lead.linkedIn || '',
                     description: lead.description || 'Potential lead discovered via Web.',
                     source: 'web',
                     status: 'new',
@@ -188,7 +193,6 @@ const processChat = async (req, res) => {
                     isSaved: false
                   };
                   discoveredLeads.push(finalLeadData);
-                  if (io) io.to(userId).emit('lead_stream', finalLeadData);
                 } else {
                   const finalLeadData = {
                     ...existing._doc,
@@ -197,12 +201,31 @@ const processChat = async (req, res) => {
                     isSaved: true
                   };
                   discoveredLeads.push(finalLeadData);
-                  if (io) io.to(userId).emit('lead_stream', finalLeadData);
                 }
               }
             }
+
+            // === INTELLIGENCE PIPELINE ===
+            // Step 1: Clean & Deduplicate
+            if (io) io.to(userId).emit('pipeline_progress', { step: 'cleaning', count: discoveredLeads.length });
+            const cleanedLeads = cleanAndDeduplicateLeads(discoveredLeads);
+            console.log(`[CHAT] After cleaning: ${cleanedLeads.length} leads (from ${discoveredLeads.length})`);
+
+            // Step 2: Enrich (scrape contact pages for email/LinkedIn)
+            if (io) io.to(userId).emit('pipeline_progress', { step: 'enriching', count: cleanedLeads.length });
+            await batchEnrichLeads(cleanedLeads, 5);
+
+            // Step 3: AI Score + Intent Detection
+            if (io) io.to(userId).emit('pipeline_progress', { step: 'scoring', count: cleanedLeads.length });
+            await batchScoreLeads(cleanedLeads);
+
+            // Emit final results
+            for (const lead of cleanedLeads) {
+              if (io) io.to(userId).emit('lead_stream', lead);
+            }
+            if (io) io.to(userId).emit('pipeline_progress', { step: 'done', count: cleanedLeads.length });
             
-            result = discoveredLeads;
+            result = cleanedLeads;
             console.log(`[CHAT] Discovery complete. Total leads: ${result.length}`);
           } catch (discoveryErr) {
             console.error('[CHAT] Discovery pipeline error:', discoveryErr.message);

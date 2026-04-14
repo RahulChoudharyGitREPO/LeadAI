@@ -303,20 +303,23 @@ export default function ChatPage() {
                   {msg.leads && (
                     <div className="w-full mt-6">
                       {/* Search Result Summary Block */}
-                      <div className="flex flex-wrap items-center gap-4 mb-6 px-6 py-4 rounded-2xl bg-slate-50/80 border border-slate-200/50 shadow-sm">
-                        <div className="flex items-center gap-2">
-                           <Search className="w-4 h-4 text-blue-500" />
-                           <span className="text-sm font-bold text-slate-700">Found {msg.leads.length} businesses</span>
-                        </div>
-                        <div className="w-1 h-1 bg-slate-300 rounded-full" />
-                        <div className="flex items-center gap-2">
-                           <Database className="w-4 h-4 text-green-500" />
-                           <span className="text-sm font-bold text-slate-700">Saved {msg.leads.filter(l => l.isSaved && !l.isDuplicate).length} new leads</span>
-                        </div>
-                        <div className="w-1 h-1 bg-slate-300 rounded-full" />
-                        <div className="flex items-center gap-2">
-                           <AlertTriangle className="w-4 h-4 text-orange-400" />
-                           <span className="text-sm font-bold text-slate-700">Skipped {msg.leads.filter(l => l.isDuplicate && !l.isSaved).length} duplicates</span>
+                      <div className="flex flex-col gap-3 mb-6 px-6 py-4 rounded-2xl bg-slate-50/80 border border-slate-200/50 shadow-sm">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.15em]">✨ AI has analyzed these leads for you</p>
+                        <div className="flex flex-wrap items-center gap-4">
+                          <div className="flex items-center gap-2">
+                             <Search className="w-4 h-4 text-blue-500" />
+                             <span className="text-sm font-bold text-slate-700">Found {msg.leads.length} businesses</span>
+                          </div>
+                          <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                          <div className="flex items-center gap-2">
+                             <span className="text-sm">📧</span>
+                             <span className="text-sm font-bold text-slate-700">{msg.leads.filter(l => l.email).length} with email</span>
+                          </div>
+                          <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                          <div className="flex items-center gap-2">
+                             <span className="text-sm">🔥</span>
+                             <span className="text-sm font-bold text-slate-700">{msg.leads.filter(l => (l.aiScore || 0) >= 8).length} hot leads</span>
+                          </div>
                         </div>
                       </div>
 
@@ -336,20 +339,36 @@ export default function ChatPage() {
                                      {lead.name.charAt(0)}
                                    </div>
                                  </div>
-                                 {lead.url && (
-                                   <a 
-                                      href={lead.url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="flex items-center gap-1 text-[10px] font-bold text-blue-500 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
-                                   >
-                                      <ExternalLink className="w-3 h-3" /> View Source
-                                   </a>
-                                 )}
+                                 <div className="flex items-center gap-2">
+                                   {lead.aiScore && (
+                                     <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg shadow-sm ${
+                                       lead.aiScore >= 8 ? 'bg-orange-400 text-white' :
+                                       lead.aiScore >= 5 ? 'bg-yellow-400 text-slate-900' :
+                                       'bg-blue-400 text-white'
+                                     }`}>
+                                       {lead.aiScore}/10
+                                     </span>
+                                   )}
+                                   {lead.opportunityLevel === 'high' && (
+                                     <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-green-500 text-white shadow-sm">
+                                       🔥 High Opp
+                                     </span>
+                                   )}
+                                   {lead.url && (
+                                     <a 
+                                        href={lead.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex items-center gap-1 text-[10px] font-bold text-blue-500 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-full transition-colors"
+                                     >
+                                        <ExternalLink className="w-3 h-3" /> Source
+                                     </a>
+                                   )}
+                                 </div>
                                </div>
                                
-                               <div className="mb-4">
+                               <div className="mb-3">
                                  <p className="font-extrabold text-slate-900 uppercase tracking-tight leading-tight line-clamp-1">{lead.name}</p>
                                  <div className="flex flex-col gap-1 mt-2">
                                      <div className="flex items-center gap-2 text-xs font-bold tracking-wide">
@@ -359,6 +378,18 @@ export default function ChatPage() {
                                           <span className="text-slate-700">{lead.phone}</span>
                                        }
                                      </div>
+                                     {lead.email && (
+                                       <div className="flex items-center gap-2 text-xs font-bold tracking-wide">
+                                         <span className="text-slate-400">✉</span>
+                                         <span className="text-blue-600 truncate">{lead.email}</span>
+                                       </div>
+                                     )}
+                                     {lead.linkedIn && (
+                                       <a href={lead.linkedIn} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 text-xs font-bold tracking-wide text-blue-600 hover:underline">
+                                         <span className="text-slate-400">in</span>
+                                         <span className="truncate">LinkedIn</span>
+                                       </a>
+                                     )}
                                      <div className="flex items-center gap-2 text-xs font-bold tracking-wide">
                                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
                                        {(!lead.location || lead.location === 'N/A') ? 
@@ -369,7 +400,25 @@ export default function ChatPage() {
                                  </div>
                                </div>
 
-                               <p className="text-xs text-slate-500 font-medium line-clamp-2 italic mb-6">
+                               {/* Intent Signal Tags */}
+                               {lead.intentSignals && lead.intentSignals.length > 0 && (
+                                 <div className="flex flex-wrap gap-1.5 mb-3">
+                                   {lead.intentSignals.map((signal, i) => (
+                                     <span key={i} className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 uppercase tracking-wider">
+                                       {signal.replace(/_/g, ' ')}
+                                     </span>
+                                   ))}
+                                 </div>
+                               )}
+
+                               {/* Why This Lead? */}
+                               {lead.reason && (
+                                 <p className="text-[10px] text-emerald-600 font-bold mb-3 bg-emerald-50 px-3 py-1.5 rounded-lg">
+                                   🧠 {lead.reason}
+                                 </p>
+                               )}
+
+                               <p className="text-xs text-slate-500 font-medium line-clamp-2 italic mb-4">
                                  {lead.description || lead.notes?.[0]?.text || "Potential lead detected via AI search."}
                                </p>
                             </div>

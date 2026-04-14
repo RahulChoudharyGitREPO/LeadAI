@@ -7,6 +7,9 @@ const LeadSchema = new mongoose.Schema({
   date: { type: String },
   location: { type: String },
   phone: { type: String, default: 'N/A' },
+  email: { type: String, default: '' },
+  website: { type: String, default: '' },
+  linkedIn: { type: String, default: '' },
   source: { type: String, default: 'manual' },
   status: { 
     type: String, 
@@ -17,6 +20,13 @@ const LeadSchema = new mongoose.Schema({
     type: String, 
     enum: ['Hot', 'Warm', 'Cold'], 
     default: 'Warm' 
+  },
+  aiScore: { type: Number, min: 1, max: 10 },
+  intentSignals: [String],
+  opportunityLevel: { 
+    type: String, 
+    enum: ['high', 'medium', 'low'], 
+    default: 'medium' 
   },
   notes: [{ 
     text: String, 

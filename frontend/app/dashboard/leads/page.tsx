@@ -9,7 +9,9 @@ import {
   Search,
   Filter,
   UserCheck,
-  Trash2
+  Trash2,
+  Flame,
+  Zap
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,7 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
+  const [quickFilter, setQuickFilter] = useState<'all' | 'hot' | 'high_opp'>('all');
   const { api, isLoaded, userId } = useApiClient();
 
   const fetchLeads = useCallback(async () => {
@@ -77,12 +80,24 @@ export default function LeadsPage() {
   }, [fetchLeads]);
 
   const filteredLeads = useMemo(() => {
-    return leads.filter(lead => 
+    let result = leads.filter(lead => 
       lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lead.phone.includes(searchQuery) ||
       (lead.service?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
     );
-  }, [leads, searchQuery]);
+
+    // Quick filters
+    if (quickFilter === 'hot') {
+      result = result.filter(l => (l.aiScore || 0) >= 8);
+    } else if (quickFilter === 'high_opp') {
+      result = result.filter(l => l.opportunityLevel === 'high');
+    }
+
+    // Sort by AI score (highest first)
+    result.sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0));
+
+    return result;
+  }, [leads, searchQuery, quickFilter]);
 
   const exportToCSV = () => {
     if (leads.length === 0) return toast.info('No leads to export');
@@ -158,15 +173,33 @@ export default function LeadsPage() {
                 className="pl-12 h-12 rounded-xl bg-white border-none shadow-sm focus-visible:ring-yellow-400"
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
+              <button 
+                onClick={() => setQuickFilter('all')}
+                className={`h-10 px-4 rounded-xl font-bold text-sm transition-all ${quickFilter === 'all' ? 'bg-slate-900 text-white shadow-md' : 'bg-white/60 text-slate-600 hover:bg-white shadow-sm'}`}
+              >
+                All
+              </button>
+              <button 
+                onClick={() => setQuickFilter('hot')}
+                className={`h-10 px-4 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${quickFilter === 'hot' ? 'bg-orange-500 text-white shadow-md' : 'bg-white/60 text-slate-600 hover:bg-white shadow-sm'}`}
+              >
+                <Flame className="w-4 h-4" /> Hot Leads
+              </button>
+              <button 
+                onClick={() => setQuickFilter('high_opp')}
+                className={`h-10 px-4 rounded-xl font-bold text-sm flex items-center gap-2 transition-all ${quickFilter === 'high_opp' ? 'bg-green-500 text-white shadow-md' : 'bg-white/60 text-slate-600 hover:bg-white shadow-sm'}`}
+              >
+                <Zap className="w-4 h-4" /> High Opportunity
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button variant="outline" className="h-12 px-6 rounded-xl border-none bg-white shadow-sm flex items-center gap-2 font-bold group" />
+                    <Button variant="outline" className="h-10 px-5 rounded-xl border-none bg-white shadow-sm flex items-center gap-2 font-bold group" />
                   }
                 >
                   <Filter className="w-4 h-4 text-slate-400 group-hover:text-yellow-600" />
-                  <span className="capitalize">{statusFilter === 'all' ? 'Filter: All' : `Status: ${statusFilter}`}</span>
+                  <span className="capitalize">{statusFilter === 'all' ? 'Status: All' : `Status: ${statusFilter}`}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="glass min-w-[150px] p-2 rounded-2xl border-none shadow-2xl">
                   {(['all', ...LEAD_STATUSES] as const).map(s => (
@@ -187,6 +220,7 @@ export default function LeadsPage() {
                   <TableRow className="hover:bg-transparent border-none">
                     <TableHead className="py-6 pl-8 text-slate-400 font-bold uppercase text-[10px] tracking-widest min-w-[200px]">Lead Details</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Service</TableHead>
+                    <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">AI Score</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Status</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Score</TableHead>
                     <TableHead className="pr-8 text-slate-400 font-bold uppercase text-[10px] tracking-widest text-right">Actions</TableHead>
@@ -215,6 +249,24 @@ export default function LeadsPage() {
                            <span className={`text-[10px] font-bold uppercase tracking-tight ${lead.source === 'web' ? 'text-blue-500' : 'text-slate-500'}`}>
                               {lead.source || 'CRM'}
                            </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          {lead.aiScore ? (
+                            <span className={`text-xs font-black px-2.5 py-1 rounded-lg shadow-sm ${
+                              lead.aiScore >= 8 ? 'bg-orange-400 text-white' :
+                              lead.aiScore >= 5 ? 'bg-yellow-400 text-slate-900' :
+                              'bg-blue-400 text-white'
+                            }`}>
+                              {lead.aiScore}/10
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                          {lead.email && (
+                            <span className="text-[10px] text-blue-500 font-bold truncate max-w-[120px]">{lead.email}</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -261,7 +313,7 @@ export default function LeadsPage() {
                   ))}
                   {filteredLeads.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-60 text-center font-bold text-slate-400">
+                      <TableCell colSpan={7} className="h-60 text-center font-bold text-slate-400">
                         <div className="flex flex-col items-center gap-4">
                            <UserCheck className="w-12 h-12 opacity-20" />
                            {loading ? 'Loading leads...' : 'No leads found matching your filters.'}

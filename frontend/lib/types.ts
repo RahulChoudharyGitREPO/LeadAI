@@ -14,8 +14,15 @@ export type Lead = {
   service?: string;
   date?: string;
   location?: string;
+  email?: string;
+  website?: string;
+  linkedIn?: string;
   status?: LeadStatus;
   leadScore?: LeadScore;
+  aiScore?: number;
+  intentSignals?: string[];
+  opportunityLevel?: 'high' | 'medium' | 'low';
+  reason?: string;
   source?: string;
   description?: string;
   notes?: LeadNote[];

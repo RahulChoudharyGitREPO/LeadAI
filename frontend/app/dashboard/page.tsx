@@ -9,7 +9,9 @@ import {
   ArrowUpRight,
   MessageCircle,
   ExternalLink,
-  Plus
+  Plus,
+  Target,
+  Sparkles
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -62,6 +64,12 @@ export default function DashboardOverview() {
 
   const recentLeads = leads.slice(0, 5);
 
+  // Top 5 leads to contact today: sorted by AI score, only uncontacted
+  const topLeads = [...leads]
+    .filter(l => l.status === 'new' && (l.aiScore || 0) > 0)
+    .sort((a, b) => (b.aiScore || 0) - (a.aiScore || 0))
+    .slice(0, 5);
+
   return (
     <div className="p-4 md:p-8 space-y-10">
       {/* Header Section */}
@@ -79,6 +87,50 @@ export default function DashboardOverview() {
               <StatCard key={stat.name} {...stat} />
             ))}
           </div>
+
+          {/* 🔥 Top 5 Leads to Contact Today */}
+          {topLeads.length > 0 && (
+            <div className="glass rounded-[2rem] overflow-hidden subtle-shadow border-none">
+              <div className="p-6 md:p-8 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg">
+                    <Target className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">Best Leads to Contact Today</h2>
+                    <p className="text-xs text-emerald-600 font-bold mt-0.5 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> AI has analyzed these leads for you
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 md:px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {topLeads.map((lead) => (
+                  <div key={lead._id} className="p-4 rounded-2xl bg-white/70 border border-slate-100 hover:border-yellow-400/50 hover:shadow-md transition-all group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-600 text-sm group-hover:bg-yellow-100 group-hover:text-yellow-600 transition-colors">
+                        {lead.name.charAt(0)}
+                      </div>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm ${
+                        (lead.aiScore || 0) >= 8 ? 'bg-orange-400 text-white' :
+                        (lead.aiScore || 0) >= 5 ? 'bg-yellow-400 text-slate-900' :
+                        'bg-blue-400 text-white'
+                      }`}>
+                        {lead.aiScore}/10
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-slate-900 text-sm tracking-tight line-clamp-1 uppercase">{lead.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">{lead.service || 'General'}</p>
+                    {lead.reason && (
+                      <p className="text-[9px] text-emerald-600 font-bold mt-2 bg-emerald-50 px-2 py-1 rounded-md line-clamp-2">
+                        🧠 {lead.reason}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Quick Actions / Recent Activity Area */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
