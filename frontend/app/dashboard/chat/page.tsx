@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Send, 
   Loader2,
@@ -16,7 +16,10 @@ import {
   ExternalLink,
   Info,
   Trash2,
-  FileDown
+  FileDown,
+  MessageSquarePlus,
+  Clock,
+  X
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,13 +35,15 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { SOCKET_URL, useApiClient } from '@/lib/api';
-import type { Lead, ChatMessage } from '@/lib/types';
+import type { Lead, ChatMessage, ChatSession } from '@/lib/types';
 
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const DEFAULT_MSG: ChatMessage[] = [
     { role: 'assistant', content: "Hello! I'm your AI Lead Discovery expert. I can search the live web for new business leads. Where should we look today?" }
-  ]);
+  ];
+
+  const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_MSG);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -49,7 +54,107 @@ export default function ChatPage() {
   const [isClearChatOpen, setIsClearChatOpen] = useState(false);
   const [pitchLoadingId, setPitchLoadingId] = useState<string | null>(null);
   const { api, isLoaded, userId } = useApiClient();
-  const chatStorageKey = userId ? `aiChatMessages:${userId}` : null;
+
+  // === SESSION STATE ===
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showSessions, setShowSessions] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load sessions list
+  const fetchSessions = useCallback(async () => {
+    if (!isLoaded || !userId) return;
+    try {
+      const res = await api.get('/chat/sessions');
+      setSessions(res.data);
+    } catch {
+      console.error('Failed to fetch sessions');
+    }
+  }, [api, isLoaded, userId]);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  // Auto-save messages to active session (debounced)
+  useEffect(() => {
+    if (!activeSessionId || !isLoaded || !userId) return;
+    if (messages.length <= 1) return; // Don't save just the default message
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Generate title from first user message
+        const firstUserMsg = messages.find(m => m.role === 'user');
+        const title = firstUserMsg ? firstUserMsg.content.slice(0, 50) : 'New Chat';
+        
+        await api.patch(`/chat/sessions/${activeSessionId}`, {
+          messages: messages.filter(m => !m.isStreaming),
+          title
+        });
+      } catch {
+        console.error('Auto-save failed');
+      }
+    }, 2000);
+
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [messages, activeSessionId, api, isLoaded, userId]);
+
+  // Create new session
+  const createNewSession = async () => {
+    if (!isLoaded || !userId) return;
+    try {
+      const res = await api.post('/chat/sessions', { title: 'New Chat', messages: DEFAULT_MSG });
+      setActiveSessionId(res.data._id);
+      setMessages(DEFAULT_MSG);
+      setLastScan(null);
+      setTimeAgoStr('');
+      fetchSessions();
+      setShowSessions(false);
+    } catch {
+      toast.error('Failed to create session');
+    }
+  };
+
+  // Load a session
+  const loadSession = async (sessionId: string) => {
+    if (!isLoaded || !userId) return;
+    try {
+      const res = await api.get(`/chat/sessions/${sessionId}`);
+      setActiveSessionId(sessionId);
+      setMessages(res.data.messages?.length > 0 ? res.data.messages : DEFAULT_MSG);
+      setShowSessions(false);
+    } catch {
+      toast.error('Failed to load session');
+    }
+  };
+
+  // Delete a session
+  const deleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoaded || !userId) return;
+    try {
+      await api.delete(`/chat/sessions/${sessionId}`);
+      if (activeSessionId === sessionId) {
+        setActiveSessionId(null);
+        setMessages(DEFAULT_MSG);
+      }
+      fetchSessions();
+      toast.success('Chat deleted');
+    } catch {
+      toast.error('Failed to delete session');
+    }
+  };
+
+  // Auto-create first session if none exists
+  useEffect(() => {
+    if (isLoaded && userId && sessions.length === 0 && !activeSessionId) {
+      createNewSession();
+    } else if (isLoaded && userId && sessions.length > 0 && !activeSessionId) {
+      loadSession(sessions[0]._id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, userId, sessions.length]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -83,7 +188,6 @@ export default function ChatPage() {
           const newMsgs = [...prev];
           const lastMsg = newMsgs[newMsgs.length - 1];
           if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-            // deduplicate live stream if necessary based on name
             const exists = lastMsg.leads?.some(l => l.name === lead.name);
             if (!exists) {
               lastMsg.leads = [...(lastMsg.leads || []), lead];
@@ -97,39 +201,12 @@ export default function ChatPage() {
     });
   }, [userId]);
 
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Load from session storage on mount
-  useEffect(() => {
-    if (!chatStorageKey) return;
-
-    const savedMsg = sessionStorage.getItem(chatStorageKey);
-    if (savedMsg) {
-      try { 
-        const parsed = JSON.parse(savedMsg);
-        if (parsed && parsed.length > 0) {
-          setMessages(parsed); 
-        }
-      } catch {}
-    }
-    setIsInitialized(true);
-  }, [chatStorageKey]);
-
-  // Save to session storage when messages change, but ONLY after initialization
-  useEffect(() => {
-    if (isInitialized && chatStorageKey) {
-      sessionStorage.setItem(chatStorageKey, JSON.stringify(messages));
-    }
-  }, [messages, isInitialized, chatStorageKey]);
-
   const clearChat = () => {
     setIsClearChatOpen(true);
   };
 
   const confirmClearChat = () => {
-    const defaultMsg: ChatMessage[] = [{ role: 'assistant', content: "Hello! I'm your AI Lead Discovery expert. I can search the live web for new business leads. Where should we look today?" }];
-    setMessages(defaultMsg);
-    if (chatStorageKey) sessionStorage.removeItem(chatStorageKey);
+    setMessages(DEFAULT_MSG);
     setLastScan(null);
     setTimeAgoStr('');
     setIsClearChatOpen(false);
@@ -172,7 +249,7 @@ export default function ChatPage() {
     }
 
     const userMsg: ChatMessage = { role: 'user', content: input };
-    const placeholderMsg: ChatMessage = { role: 'assistant', content: 'Searching...', leads: [], isStreaming: true };
+    const placeholderMsg: ChatMessage = { role: 'assistant', content: '', leads: [], isStreaming: true };
     setMessages(prev => [...prev, userMsg, placeholderMsg]);
     setInput('');
     setLoading(true);
@@ -258,14 +335,77 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex-1 overflow-hidden p-4 md:p-8 flex flex-col gap-6 h-[calc(100vh-80px)]">
+    <div className="flex h-[calc(100vh-80px)] overflow-hidden">
+      {/* === SESSION SIDEBAR === */}
+      <div className={cn(
+        "flex flex-col border-r border-white/20 bg-white/30 backdrop-blur-sm transition-all duration-300 shrink-0 overflow-hidden",
+        showSessions ? "w-72" : "w-0"
+      )}>
+        <div className="p-4 border-b border-slate-200/50 flex items-center justify-between">
+          <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider">Chat History</h3>
+          <button onClick={() => setShowSessions(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <button
+          onClick={createNewSession}
+          className="m-3 h-10 rounded-xl yellow-gradient text-slate-900 font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+        >
+          <MessageSquarePlus className="w-4 h-4" /> New Chat
+        </button>
+        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+          {sessions.map(session => (
+            <button
+              key={session._id}
+              onClick={() => loadSession(session._id)}
+              className={cn(
+                "w-full text-left p-3 rounded-xl transition-all group flex items-center justify-between",
+                activeSessionId === session._id
+                  ? "bg-yellow-400/20 border border-yellow-400/30 shadow-sm"
+                  : "hover:bg-white/60 border border-transparent"
+              )}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-800 truncate">{session.title}</p>
+                <p className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
+                  <Clock className="w-3 h-3" />
+                  {new Date(session.updatedAt).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={(e) => deleteSession(session._id, e)}
+                className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 text-slate-400 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </button>
+          ))}
+          {sessions.length === 0 && (
+            <p className="text-xs text-slate-400 text-center py-8 font-medium">No previous chats</p>
+          )}
+        </div>
+      </div>
+
+      {/* === MAIN CHAT AREA === */}
+      <div className="flex-1 overflow-hidden p-4 md:p-8 flex flex-col gap-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">AI Discovery Hub</h1>
-          <p className="text-slate-500 mt-1 font-medium text-sm md:text-base">Real-time business intelligence and lead generation.</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowSessions(!showSessions)}
+            className="p-2.5 rounded-xl bg-white/50 border border-white/40 text-slate-500 hover:text-yellow-600 hover:bg-white transition-all shadow-sm"
+          >
+            <Clock className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">AI Discovery Hub</h1>
+            <p className="text-slate-500 mt-1 font-medium text-sm md:text-base">Real-time business intelligence and lead generation.</p>
+          </div>
         </div>
         <div className="flex flex-col items-start md:items-end gap-2 text-left md:text-right w-full md:w-auto">
            <div className="flex flex-wrap items-center gap-3">
+             <Button onClick={createNewSession} variant="ghost" size="sm" className="h-9 px-3 text-slate-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg text-xs md:text-sm">
+               <MessageSquarePlus className="w-4 h-4 mr-2" /> New
+             </Button>
              <Button onClick={clearChat} variant="ghost" size="sm" className="h-9 px-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg text-xs md:text-sm">
                <Trash2 className="w-4 h-4 mr-2" /> Clear
              </Button>
@@ -297,10 +437,17 @@ export default function ChatPage() {
                       ? "bg-yellow-400 text-slate-900 rounded-[2rem] rounded-tr-none" 
                       : "bg-white/90 text-slate-700 rounded-[2rem] rounded-tl-none border-none soft-border"
                   )}>
-                    {msg.content}
+                    {msg.isStreaming ? (
+                      <div className="flex items-center gap-3">
+                        <Globe className="w-4 h-4 animate-spin text-yellow-500" />
+                        <span className="text-xs font-black text-slate-400 animate-pulse uppercase tracking-widest">Searching live web...</span>
+                      </div>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
 
-                  {msg.leads && (
+                  {msg.leads && msg.leads.length > 0 && !msg.isStreaming && (
                     <div className="w-full mt-6">
                       {/* Search Result Summary Block */}
                       <div className="flex flex-col gap-3 mb-6 px-6 py-4 rounded-2xl bg-slate-50/80 border border-slate-200/50 shadow-sm">
@@ -462,7 +609,7 @@ export default function ChatPage() {
                 </div>
               ))}
               
-              {loading && (
+              {loading && !messages.some(m => m.isStreaming) && (
                 <div className="flex flex-col gap-4 items-start">
                   <div className="bg-white/90 p-6 rounded-[2rem] rounded-tl-none flex items-center gap-2 shadow-sm soft-border">
                     <span className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
@@ -598,6 +745,7 @@ export default function ChatPage() {
         </DialogContent>
       </Dialog>
 
+      </div> {/* end main chat area */}
     </div>
   );
 }

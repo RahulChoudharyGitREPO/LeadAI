@@ -43,3 +43,11 @@ export type ChatMessage = {
 export type ChatToolResult = {
   content: string;
 };
+
+export type ChatSession = {
+  _id: string;
+  title: string;
+  messages: ChatMessage[];
+  updatedAt: string;
+  createdAt: string;
+};
