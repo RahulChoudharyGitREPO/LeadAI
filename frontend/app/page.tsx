@@ -16,13 +16,13 @@ export default function Home() {
         </div>
         
         <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-tight px-2">
-          Convert Visitors into <br />
-          <span className="text-yellow-500">Premium Customers</span>
+          Discover & Convert <br />
+          <span className="text-yellow-500">Premium Leads</span>
         </h1>
         
         <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto font-medium px-4">
-          Our AI-powered guided chat system captures leads, scores them instantly, 
-          and handles your bookings while you sleep.
+          Our AI-powered discovery engine searches the live web, deep-scrapes contact data, 
+          and scores every opportunity based on digital presence.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
@@ -32,32 +32,26 @@ export default function Home() {
               <ArrowRight className="w-5 h-5" />
             </button>
           </Link>
-          <button className="h-14 px-8 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-all">
-            See Case Studies
-          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-20">
           <FeatureCard 
             icon={Zap} 
-            title="Instant Setup" 
-            desc="Go from zero to conversion-ready in under 5 minutes." 
+            title="AI Discovery Hub" 
+            desc="Find high-value business leads across the live web in seconds." 
           />
           <FeatureCard 
             icon={Target} 
-            title="Lead Scoring" 
-            desc="Identify 'Hot' leads automatically with AI logic." 
+            title="Smart Scoring" 
+            desc="Automatically identify 'Hot' opportunities using AI intent signals." 
           />
           <FeatureCard 
             icon={Sparkles} 
-            title="AI Chat" 
-            desc="Guided flow designed to convert 3x more visitors." 
+            title="Deep Enrichment" 
+            desc="Automated contact extraction including emails and LinkedIn profiles." 
           />
         </div>
       </div>
-
-      {/* Floating Chat Widget */}
-      <ChatWidget />
     </div>
   );
 }

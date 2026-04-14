@@ -8,6 +8,8 @@ const { Server } = require("socket.io");
 
 const leadsRoutes = require('./routes/leads');
 const chatRoutes = require('./routes/chat');
+const adminRoutes = require('./routes/admin');
+const trackActivity = require('./middleware/activity');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -41,9 +43,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Activity tracking middleware (runs on every request)
+app.use('/api', trackActivity);
+
 // Routes
 app.use('/api/leads', leadsRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin', adminRoutes);
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/leadapp';

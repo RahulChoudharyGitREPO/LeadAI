@@ -1,5 +1,6 @@
 const { OpenAI } = require('openai');
 const Lead = require('../models/Lead');
+const User = require('../models/User');
 const { searchWeb } = require('../services/search.service');
 const { scrapePage } = require('../services/realScraper.service');
 const { extractLeadsFromText, batchScoreLeads } = require('../services/extraction.service');
@@ -107,6 +108,9 @@ const processChat = async (req, res) => {
         
         else if (toolCall.function.name === 'discover_leads_on_web') {
           console.log(`[CHAT] Starting web discovery: niche="${args.niche}" location="${args.location}"`);
+          
+          // Track search count for admin dashboard
+          User.findOneAndUpdate({ userId }, { $inc: { searchCount: 1 } }).catch(() => {});
           
           try {
             // 1. Search Google for URLs and Local Data

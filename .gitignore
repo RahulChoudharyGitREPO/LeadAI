@@ -43,3 +43,5 @@ yarn-error.log*
 
 # vercel
 .vercel
+CLIENTSTREAM_GUIDE.md
+.gitignore

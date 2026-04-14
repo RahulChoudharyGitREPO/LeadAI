@@ -17,8 +17,12 @@ export function useApiClient() {
 
   const api = useMemo(() => axios.create({
     baseURL: API_BASE_URL,
-    headers: userId ? { 'x-user-id': userId } : {},
-  }), [userId]);
+    headers: userId ? { 
+      'x-user-id': userId,
+      'x-user-name': user?.fullName || user?.firstName || '',
+      'x-user-email': user?.primaryEmailAddress?.emailAddress || '',
+    } : {},
+  }), [userId, user]);
 
   return { api, isLoaded, userId };
 }

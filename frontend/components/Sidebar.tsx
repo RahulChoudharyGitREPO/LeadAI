@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -8,9 +8,11 @@ import {
   Users, 
   MessageSquare, 
   TrendingUp,
-  LogOut
+  LogOut,
+  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useApiClient } from '@/lib/api';
 
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -26,6 +28,19 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { api, isLoaded, userId } = useApiClient();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded || !userId) return;
+    api.get('/admin/check')
+      .then(res => setIsAdmin(res.data.isAdmin))
+      .catch(() => setIsAdmin(false));
+  }, [api, isLoaded, userId]);
+
+  const allNavItems = isAdmin 
+    ? [...navItems, { name: 'Admin', href: '/dashboard/admin', icon: Shield }]
+    : navItems;
 
   return (
     <>
@@ -43,7 +58,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 px-4 py-4 space-y-2">
-        {navItems.map((item) => {
+        {allNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           
@@ -56,12 +71,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
                 isActive 
                   ? "bg-yellow-400/20 text-yellow-700 shadow-sm" 
-                  : "text-slate-500 hover:bg-white/50 hover:text-slate-900"
+                  : "text-slate-500 hover:bg-white/50 hover:text-slate-900",
+                item.name === 'Admin' && "border border-amber-200/50"
               )}
             >
               <Icon className={cn(
                 "w-5 h-5 transition-colors",
-                isActive ? "text-yellow-600" : "text-slate-400 group-hover:text-slate-600"
+                isActive ? "text-yellow-600" : "text-slate-400 group-hover:text-slate-600",
+                item.name === 'Admin' && !isActive && "text-amber-500"
               )} />
               <span className="font-medium">{item.name}</span>
               {isActive && (
