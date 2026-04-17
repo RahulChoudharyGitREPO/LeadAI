@@ -9,6 +9,7 @@ const { Server } = require("socket.io");
 const leadsRoutes = require('./routes/leads');
 const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
+const paymentRoutes = require('./routes/payment');
 const trackActivity = require('./middleware/activity');
 
 const app = express();
@@ -50,6 +51,7 @@ app.use('/api', trackActivity);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/leadapp';

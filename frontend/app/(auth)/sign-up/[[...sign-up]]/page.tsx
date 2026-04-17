@@ -12,7 +12,8 @@ export default function SignUpPage() {
           <p className="text-slate-500 font-medium">Start your AI conversion journey</p>
         </div>
 
-        <SignUp 
+        <SignUp
+          forceRedirectUrl="/dashboard/chat"
           appearance={{
             elements: {
               rootBox: "w-full",

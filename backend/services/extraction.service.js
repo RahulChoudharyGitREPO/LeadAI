@@ -4,12 +4,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-/**
- * Extract business leads from raw text content using AI
- * @param {string} content - The raw scraped text
- * @param {string} location - The target location for context
- * @returns {Promise<Array>} - List of structured lead objects
- */
 async function extractLeadsFromText(content, location) {
   if (!content || content.length < 50) {
     console.log('[EXTRACT] Content too short, skipping.');
@@ -50,11 +44,18 @@ ${content.substring(0, 8000)}
   }
 }
 
-/**
- * AI-powered lead scoring and intent detection
- * @param {object} lead - Lead object with name, service, location, description, website, etc.
- * @returns {object} - { aiScore, leadScore, intentSignals, opportunityLevel, reason }
- */
+// ─── Per-Lead Data Quality Score (Fix #5) ────────────────────────────────────
+function calcDataQuality(lead) {
+  let score = 0;
+  if (lead.phone && lead.phone !== 'N/A') score += 3;
+  if (lead.email)   score += 2;
+  if (lead.website) score += 2;
+  if (lead.address || lead.location) score += 1;
+  if (lead.description && lead.description.length > 50) score += 1;
+  if (lead.linkedIn) score += 1;
+  return Math.min(score, 10);
+}
+
 async function scoreAndAnalyzeLead(lead) {
   const defaults = {
     aiScore: 5,
@@ -104,13 +105,11 @@ Return ONLY valid JSON:
 
     const parsed = JSON.parse(response.choices[0].message.content);
     const score = Math.max(1, Math.min(10, parseInt(parsed.aiScore) || 5));
-    
-    // Map numeric score to Hot/Warm/Cold
+
     let leadScore = 'Warm';
     if (score >= 8) leadScore = 'Hot';
     else if (score < 5) leadScore = 'Cold';
 
-    // Map to opportunity level
     let opportunityLevel = 'medium';
     if (score >= 8) opportunityLevel = 'high';
     else if (score < 5) opportunityLevel = 'low';
@@ -129,18 +128,23 @@ Return ONLY valid JSON:
 }
 
 /**
- * Batch score multiple leads (sequential to avoid rate limits)
+ * Batch score leads sequentially (avoids OpenAI rate limits).
+ * Fix #10: optional onLeadScored callback — called immediately after each lead is scored
+ * so the frontend receives leads progressively instead of all at once.
  */
-async function batchScoreLeads(leads) {
+async function batchScoreLeads(leads, onLeadScored) {
   console.log(`[SCORE] Scoring ${leads.length} leads...`);
-  for (const lead of leads) {
+  for (let i = 0; i < leads.length; i++) {
+    const lead = leads[i];
     const scoring = await scoreAndAnalyzeLead(lead);
     lead.aiScore = scoring.aiScore;
     lead.leadScore = scoring.leadScore;
     lead.intentSignals = scoring.intentSignals;
     lead.opportunityLevel = scoring.opportunityLevel;
     lead.reason = scoring.reason;
-    console.log(`[SCORE] ${lead.name}: ${scoring.aiScore}/10 (${scoring.leadScore}) — ${scoring.reason}`);
+    lead.dataQuality = calcDataQuality(lead);
+    console.log(`[SCORE] ${lead.name}: ${scoring.aiScore}/10 (${scoring.leadScore}) quality=${lead.dataQuality} — ${scoring.reason}`);
+    if (onLeadScored) onLeadScored(lead, i);
   }
   return leads;
 }

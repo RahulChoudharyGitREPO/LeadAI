@@ -3,41 +3,18 @@
  * Normalizes, validates, and deduplicates lead data
  */
 
-/**
- * Normalize a phone number — strip non-digits, handle country codes
- */
 function normalizePhone(phone) {
   if (!phone || phone === 'N/A') return 'N/A';
-  
-  // Strip everything except digits and leading +
   let cleaned = phone.replace(/[^\d+]/g, '');
-  
-  // Remove leading + for comparison
-  if (cleaned.startsWith('+')) {
-    cleaned = cleaned.substring(1);
-  }
-  
-  // If it's too short, it's not a real phone
+  if (cleaned.startsWith('+')) cleaned = cleaned.substring(1);
   if (cleaned.length < 7) return 'N/A';
-  
-  // Add + back for international format
   if (cleaned.length >= 10) {
-    // Indian numbers (10 digits starting with 6-9)
-    if (cleaned.length === 10 && /^[6-9]/.test(cleaned)) {
-      return `+91${cleaned}`;
-    }
-    // Already has country code
-    if (cleaned.length > 10) {
-      return `+${cleaned}`;
-    }
+    if (cleaned.length === 10 && /^[6-9]/.test(cleaned)) return `+91${cleaned}`;
+    if (cleaned.length > 10) return `+${cleaned}`;
   }
-  
   return cleaned;
 }
 
-/**
- * Validate email format
- */
 function validateEmail(email) {
   if (!email || typeof email !== 'string') return '';
   const trimmed = email.trim().toLowerCase();
@@ -45,9 +22,6 @@ function validateEmail(email) {
   return emailRegex.test(trimmed) ? trimmed : '';
 }
 
-/**
- * Clean business name — strip junk suffixes from scraping
- */
 function cleanBusinessName(name) {
   if (!name) return '';
   return name
@@ -58,67 +32,89 @@ function cleanBusinessName(name) {
     .trim();
 }
 
-/**
- * Deduplicate leads by fuzzy name match + exact phone match
- */
-function deduplicateLeads(leads) {
-  const seen = new Map(); // normalized name -> lead
-  const result = [];
+// ─── Fuzzy Dedup Helpers (Fix #4) ────────────────────────────────────────────
 
-  for (const lead of leads) {
-    const normName = (lead.name || '').toLowerCase().trim().replace(/[^a-z0-9\s]/g, '');
-    const normPhone = normalizePhone(lead.phone);
-    
-    // Check for duplicates
-    let isDupe = false;
-    
-    for (const [existingName, existingLead] of seen) {
-      // Exact name match
-      if (normName === existingName) {
-        isDupe = true;
-        // Merge: keep the one with more data
-        mergeLeadData(existingLead, lead);
-        break;
-      }
-      
-      // Phone match (if both have real phones)
-      if (normPhone !== 'N/A' && normalizePhone(existingLead.phone) === normPhone) {
-        isDupe = true;
-        mergeLeadData(existingLead, lead);
-        break;
-      }
-    }
-    
-    if (!isDupe) {
-      seen.set(normName, lead);
-      result.push(lead);
-    }
-  }
+function normalizeForFuzzy(name) {
+  return (name || '').toLowerCase()
+    .replace(/\b(pg|hostel|paying guest|accommodation|pvt|ltd|llp|inc|rooms?|services?|center|centre|institute)\b/g, '')
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
 
-  return result;
+function normalizeLocation(loc) {
+  return (loc || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 }
 
 /**
- * Merge data from a duplicate into the primary lead (keep best data)
+ * Returns true only if two leads are the same business.
+ * Fuzzy name similarity alone is NOT enough — requires location or phone confirmation
+ * to prevent false positives like "Raj PG" vs "Rajesh PG".
  */
+function isFuzzyDuplicate(leadA, leadB) {
+  const na = normalizeForFuzzy(leadA.name);
+  const nb = normalizeForFuzzy(leadB.name);
+  if (!na || !nb) return false;
+
+  // Exact name match after stripping common suffixes → always safe to merge
+  if (na === nb) return true;
+
+  // Fuzzy: one name contains the other at 75%+ length ratio
+  const shorter = na.length <= nb.length ? na : nb;
+  const longer  = na.length <= nb.length ? nb : na;
+  const nameSimilar = longer.includes(shorter) && (shorter.length / longer.length) >= 0.75;
+  if (!nameSimilar) return false;
+
+  // Name is only similar — require same phone OR same city to confirm same business
+  const phoneA = normalizePhone(leadA.phone);
+  const phoneB = normalizePhone(leadB.phone);
+  const samePhone = phoneA !== 'N/A' && phoneB !== 'N/A' && phoneA === phoneB;
+
+  const locA = normalizeLocation(leadA.location || leadA.address);
+  const locB = normalizeLocation(leadB.location || leadB.address);
+  const sameCity = locA.length > 2 && locB.length > 2 && (locA.includes(locB) || locB.includes(locA));
+
+  return samePhone || sameCity;
+}
+
+// ─── Deduplication ────────────────────────────────────────────────────────────
+
+function deduplicateLeads(leads) {
+  const unique = [];
+
+  for (const lead of leads) {
+    const normPhone = normalizePhone(lead.phone);
+    let isDupe = false;
+
+    for (const existing of unique) {
+      // Phone match (strongest signal)
+      if (normPhone !== 'N/A' && normalizePhone(existing.phone) === normPhone) {
+        isDupe = true;
+        mergeLeadData(existing, lead);
+        break;
+      }
+      // Fuzzy name match — requires location or phone confirmation (prevents "Raj PG" vs "Rajesh PG" false positives)
+      if (isFuzzyDuplicate(existing, lead)) {
+        isDupe = true;
+        mergeLeadData(existing, lead);
+        break;
+      }
+    }
+
+    if (!isDupe) unique.push(lead);
+  }
+
+  return unique;
+}
+
 function mergeLeadData(primary, duplicate) {
   if ((!primary.phone || primary.phone === 'N/A') && duplicate.phone && duplicate.phone !== 'N/A') {
     primary.phone = duplicate.phone;
   }
-  if (!primary.email && duplicate.email) {
-    primary.email = duplicate.email;
-  }
-  if (!primary.website && duplicate.website) {
-    primary.website = duplicate.website;
-  }
-  if (!primary.description && duplicate.description) {
-    primary.description = duplicate.description;
-  }
+  if (!primary.email && duplicate.email) primary.email = duplicate.email;
+  if (!primary.website && duplicate.website) primary.website = duplicate.website;
+  if (!primary.description && duplicate.description) primary.description = duplicate.description;
 }
 
-/**
- * Clean a single lead object
- */
 function cleanLead(lead) {
   return {
     ...lead,
@@ -128,9 +124,6 @@ function cleanLead(lead) {
   };
 }
 
-/**
- * Full cleaning pipeline: clean each lead, then deduplicate
- */
 function cleanAndDeduplicateLeads(leads) {
   const cleaned = leads.map(cleanLead).filter(l => l.name && l.name.length > 1);
   return deduplicateLeads(cleaned);

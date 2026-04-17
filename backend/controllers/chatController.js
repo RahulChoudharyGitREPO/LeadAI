@@ -2,10 +2,13 @@ const { OpenAI } = require('openai');
 const Lead = require('../models/Lead');
 const User = require('../models/User');
 const { searchWeb } = require('../services/search.service');
+const { parseSearchQuery } = require('../services/queryParser.service');
 const { scrapePage } = require('../services/realScraper.service');
 const { extractLeadsFromText, batchScoreLeads } = require('../services/extraction.service');
 const { cleanAndDeduplicateLeads } = require('../services/cleaning.service');
 const { batchEnrichLeads } = require('../services/enrichment.service');
+const { checkSubscription } = require('../middleware/checkSubscription');
+const PLANS = require('../config/plans');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -19,16 +22,29 @@ You are an advanced AI Sales & Discovery Assistant for an AI Customer Conversion
 CAPABILITIES:
 1. INTERNAL SEARCH: Use 'query_database_leads' to find existing leads in the system.
 2. WEB DISCOVERY: Use 'discover_leads_on_web' to search for potential new leads from the REAL web.
-   - You MUST pass the EXACT location the user mentions (e.g. "Kolkata", "Mumbai", "New York").
-   - If user says "near me", ask them for their city first.
+   - NEVER ask the user to confirm or clarify a location. Always use your best interpretation and call the tool immediately.
+   - Auto-correct typos in location names (e.g. "boakro" → "Bokaro", "mumabi" → "Mumbai") without mentioning the correction.
+   - If the system context includes "User location: [city]", use that city when the user says "near me" or similar.
    - The search will hit Google and scrape real websites.
 3. LEAD CAPTURE: Collect Service, Location, and Phone for new leads.
 
 RULES:
-- Always pass the user's exact location to the discovery tool.
+- NEVER ask for clarification on any location name. Silently fix typos and search immediately.
+- Always pass the user's best-interpreted location to the discovery tool.
 - NEVER list the discovered leads individually in your text response. Do NOT repeat names, phones, or URLs.
 - The UI will render the visual lead cards automatically below your message.
 - Just output a short, single sentence summary like: "I found several leads in [Location]. You can review them below and click 'Save Lead' to add them to your CRM."
+- ONLY base your response on what the tool actually returned. NEVER invent lead counts, names, or availability.
+- If the tool returns { found: 0, nextFallback: "X" }, say: "I couldn't find [niche] leads in [location]. Want me to search in [X] instead? Just say yes."
+- If the tool returns { found: 0, nextFallback: null }, say: "I couldn't find any [niche] leads after trying multiple query variations and location levels."
+- If the tool returns { found: N, searchNote: "..." }, include the searchNote naturally — e.g. "I found [N] [niche] leads. Note: results are from [broader location] since the specific area had no listings."
+- If the tool returns { confidence: "low" }, add: "Results may be limited for this area."
+- If the tool returns { overallDataQuality } >= 7, add: "These leads have strong contact data." If < 4, add: "Limited contact data is available for these leads."
+- If the tool returns { type: "TIMEOUT" }, say: "The search is taking longer than usual. Please try again in a moment."
+- If the tool returns { type: "API_ERROR" }, say: "I hit a technical issue while searching. Please try again in a moment."
+- If the tool returns { type: "RATE_LIMITED" }, say: "Search limit reached — please wait a minute and try again."
+- If the tool returns { type: "BLOCKED" }, say: "Search is temporarily unavailable. Please try again shortly."
+- NEVER say "let me try again" or "I encountered an issue" on your own — only use the messages above.
 `;
 
 const TOOLS = [
@@ -92,6 +108,13 @@ const processChat = async (req, res) => {
         const args = JSON.parse(toolCall.function.arguments);
         console.log(`[CHAT] Tool called: ${toolCall.function.name}`, args);
 
+        let toolError = null;
+        let toolErrorType = 'API_ERROR';
+        let usedLocation = args.location;
+        let originalLocation = args.location;
+        let confidence = 'high';
+        let nextFallback = null;
+
         if (toolCall.function.name === 'query_database_leads') {
           const filter = { userId };
           if (args.status && args.status !== 'all') filter.status = args.status;
@@ -108,16 +131,34 @@ const processChat = async (req, res) => {
         
         else if (toolCall.function.name === 'discover_leads_on_web') {
           console.log(`[CHAT] Starting web discovery: niche="${args.niche}" location="${args.location}"`);
-          
-          // Track search count for admin dashboard
-          User.findOneAndUpdate({ userId }, { $inc: { searchCount: 1 } }).catch(() => {});
-          
+
+          // Subscription gate — blocks free/expired/limit-reached users
+          const subCheck = await checkSubscription(userId);
+          if (!subCheck.allowed) {
+            const message = subCheck.reason === 'SUBSCRIPTION_REQUIRED'
+              ? 'Please subscribe to use web discovery.'
+              : subCheck.reason === 'SUBSCRIPTION_EXPIRED'
+              ? 'Your plan has expired. Please renew to continue.'
+              : `Search limit reached (${subCheck.searchesUsed}/${subCheck.searchLimit}). Upgrade to search more.`;
+            return res.status(402).json({ error: subCheck.reason, message, plans: PLANS });
+          }
+
           try {
-            // 1. Search Google for URLs and Local Data
-            const searchResults = await searchWeb(args.niche, args.location, args.requiresNoWebsite);
-            console.log(`[CHAT] Search returned ${searchResults.length} results`);
-            
-            const items = searchResults.slice(0, 15); // Process up to 15 items
+            // 1. Query Understanding — normalize niche, get synonyms + location fallback chain
+            const parsed = await parseSearchQuery(args.niche, args.location);
+            const searchNiche = parsed?.niche || args.niche;
+            const searchLocation = parsed?.location || args.location;
+            const synonyms = parsed?.synonyms || [];
+            const intentModifiers = parsed?.intentModifiers || [];
+            const locationChain = parsed?.locationChain || [args.location];
+
+            // 2. Multi-query search with synonyms, intentModifiers + location fallback chain
+            const searchData = await searchWeb(searchNiche, searchLocation, args.requiresNoWebsite, synonyms, locationChain, intentModifiers);
+            ({ usedLocation, originalLocation, confidence, nextFallback } = searchData);
+            const searchResults = searchData.results;
+            console.log(`[CHAT] Search returned ${searchResults.length} results (confidence: ${confidence}, usedLocation: "${usedLocation}")`);
+
+            const items = searchResults.slice(0, subCheck.resultsLimit || 20);
             const discoveredLeads = [];
             let scrapeCount = 0;
             const MAX_SCRAPES = 3; // Only scrape up to 3 organic sites to stay fast
@@ -129,23 +170,23 @@ const processChat = async (req, res) => {
               let extracted = [];
 
               if (item.isLocal) {
-                // FAST PATH: It's a Maps/Local result, no scraping required!
+                // FAST PATH: Maps/Local result — no scraping required
                 console.log(`[CHAT] Fast Path (Local Result) used for ${item.title}`);
                 extracted = [{
                   name: item.title,
-                  service: args.niche,
-                  location: item.address || args.location,
+                  service: searchNiche,
+                  location: item.address || usedLocation,
                   phone: item.phone || 'N/A',
                   description: item.snippet || `Business located at ${item.address}`
                 }];
               } else {
-                // SLOW PATH: Try scraping organic website (limited)
+                // SLOW PATH: Scrape organic website (capped at MAX_SCRAPES)
                 if (scrapeCount < MAX_SCRAPES) {
                   try {
                     scrapeCount++;
                     const content = await scrapePage(item.link);
                     if (content && content.length > 100) {
-                      extracted = await extractLeadsFromText(content, args.location);
+                      extracted = await extractLeadsFromText(content, usedLocation);
                     }
                   } catch (scrapeErr) {
                     console.log(`[CHAT] Scraping failed for ${item.link}, using search data instead`);
@@ -154,12 +195,11 @@ const processChat = async (req, res) => {
                   console.log(`[CHAT] Scrape limit reached — using search snippet for ${item.title}`);
                 }
 
-                // If scraping didn't find leads, create one from search result data
                 if (extracted.length === 0) {
                   extracted = [{
                     name: item.title.replace(/ - .*$/, '').replace(/\|.*$/, '').trim(),
-                    service: args.niche,
-                    location: item.address || args.location,
+                    service: searchNiche,
+                    location: item.address || usedLocation,
                     phone: item.phone || 'N/A',
                     description: item.snippet
                   }];
@@ -219,29 +259,66 @@ const processChat = async (req, res) => {
             if (io) io.to(userId).emit('pipeline_progress', { step: 'enriching', count: cleanedLeads.length });
             await batchEnrichLeads(cleanedLeads, 5);
 
-            // Step 3: AI Score + Intent Detection
+            // Step 3: AI Score + Intent Detection — Fix #10: emit each lead as soon as scored
             if (io) io.to(userId).emit('pipeline_progress', { step: 'scoring', count: cleanedLeads.length });
-            await batchScoreLeads(cleanedLeads);
-
-            // Emit final results
-            for (const lead of cleanedLeads) {
-              if (io) io.to(userId).emit('lead_stream', lead);
-            }
+            await batchScoreLeads(cleanedLeads, (lead, index) => {
+              if (io) io.to(userId).emit('lead_stream', { ...lead, order: index });
+            });
             if (io) io.to(userId).emit('pipeline_progress', { step: 'done', count: cleanedLeads.length });
-            
+
+            // Emit final re-ranked order by aiScore + dataQuality
+            if (io) {
+              const reranked = [...cleanedLeads].sort((a, b) =>
+                ((b.aiScore || 0) + (b.dataQuality || 0)) - ((a.aiScore || 0) + (a.dataQuality || 0))
+              );
+              io.to(userId).emit('lead_rerank', reranked.map((l, i) => ({ id: l.name, order: i })));
+            }
+
             result = cleanedLeads;
             console.log(`[CHAT] Discovery complete. Total leads: ${result.length}`);
           } catch (discoveryErr) {
             console.error('[CHAT] Discovery pipeline error:', discoveryErr.message);
-            result = [{ name: 'Discovery Error', service: args.niche, location: args.location, phone: 'N/A', notes: [{ text: discoveryErr.message }] }];
+            toolError = discoveryErr.message;
+            toolErrorType = discoveryErr.failureType || 'API_ERROR';
+            result = [];
+            if (io) io.to(userId).emit('pipeline_progress', { step: 'error', message: discoveryErr.message });
           }
+        }
+
+        let toolContent;
+        if (toolError) {
+          toolContent = JSON.stringify({
+            type: toolErrorType,
+            found: 0,
+            message: 'Discovery pipeline encountered a technical error.'
+          });
+        } else if (result.length === 0) {
+          toolContent = JSON.stringify({
+            found: 0,
+            type: 'NO_RESULTS',
+            nextFallback
+          });
+        } else {
+          const searchNote = usedLocation !== originalLocation
+            ? `Results are from "${usedLocation}" — "${originalLocation}" had no listings, so I searched the broader area.`
+            : null;
+          const overallDataQuality = result.length > 0
+            ? Math.round(result.reduce((sum, l) => sum + (l.dataQuality || 0), 0) / result.length)
+            : 0;
+          toolContent = JSON.stringify({
+            found: result.length,
+            confidence,
+            overallDataQuality,
+            ...(searchNote ? { searchNote } : {}),
+            leads: result
+          });
         }
 
         toolResults.push({
           tool_call_id: toolCall.id,
           role: "tool",
           name: toolCall.function.name,
-          content: JSON.stringify(result)
+          content: toolContent
         });
       }
 

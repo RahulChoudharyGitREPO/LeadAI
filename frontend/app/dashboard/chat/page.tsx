@@ -2,15 +2,13 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Send, 
+  Send,
   Loader2,
   Globe,
-  Database,
   Plus,
   Compass,
   Search,
   Check,
-  AlertTriangle,
   Phone,
   MapPin,
   ExternalLink,
@@ -36,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { SOCKET_URL, useApiClient } from '@/lib/api';
 import type { Lead, ChatMessage, ChatSession } from '@/lib/types';
+import SubscriptionModal from '@/components/SubscriptionModal';
 
 
 export default function ChatPage() {
@@ -53,6 +52,9 @@ export default function ChatPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isClearChatOpen, setIsClearChatOpen] = useState(false);
   const [pitchLoadingId, setPitchLoadingId] = useState<string | null>(null);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [subscriptionReason, setSubscriptionReason] = useState('SUBSCRIPTION_REQUIRED');
+  const [planStatus, setPlanStatus] = useState<{ plan: string; searchesUsed: number; searchLimit: number; isActive: boolean } | null>(null);
   const { api, isLoaded, userId } = useApiClient();
 
   // === SESSION STATE ===
@@ -60,6 +62,17 @@ export default function ChatPage() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showSessions, setShowSessions] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch plan status on mount — auto-show pricing modal for free users
+  useEffect(() => {
+    if (!isLoaded || !userId) return;
+    api.get('/payment/status').then(res => {
+      setPlanStatus(res.data);
+      if (res.data.plan === 'free' && res.data.searchesUsed >= res.data.searchLimit) {
+        setTimeout(() => setShowSubscriptionModal(true), 800);
+      }
+    }).catch(() => {});
+  }, [isLoaded, userId, api]);
 
   // Load sessions list
   const fetchSessions = useCallback(async () => {
@@ -234,6 +247,24 @@ export default function ChatPage() {
     toast.success('Leads list exported');
   };
 
+  const resolveNearMe = async (text: string): Promise<string> => {
+    if (!/near me/i.test(text)) return text;
+    try {
+      const pos = await new Promise<GeolocationPosition>((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+      );
+      const { latitude, longitude } = pos.coords;
+      const geo = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+      ).then(r => r.json());
+      const city = geo.address?.city || geo.address?.town || geo.address?.state_district || geo.address?.state || '';
+      if (city) return text.replace(/near me/gi, city);
+    } catch {
+      // geolocation denied or failed — leave as-is, AI will handle
+    }
+    return text;
+  };
+
   const handleSend = async () => {
     if (!input.trim() || loading) return;
     if (!isLoaded) return;
@@ -242,7 +273,8 @@ export default function ChatPage() {
       return;
     }
 
-    const userMsg: ChatMessage = { role: 'user', content: input };
+    const resolvedInput = await resolveNearMe(input);
+    const userMsg: ChatMessage = { role: 'user', content: resolvedInput };
     const placeholderMsg: ChatMessage = { role: 'assistant', content: '', leads: [], isStreaming: true };
     setMessages(prev => [...prev, userMsg, placeholderMsg]);
     setInput('');
@@ -252,7 +284,7 @@ export default function ChatPage() {
     let sessionId = activeSessionId;
     if (!sessionId) {
       try {
-        const sessionRes = await api.post('/chat/sessions', { title: input.slice(0, 50), messages: [] });
+        const sessionRes = await api.post('/chat/sessions', { title: resolvedInput.slice(0, 50), messages: [] });
         sessionId = sessionRes.data._id;
         setActiveSessionId(sessionId);
         fetchSessions();
@@ -279,8 +311,19 @@ export default function ChatPage() {
 
       setLastScan(new Date().getTime());
       setTimeAgoStr('Just now');
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting to the discovery engine. Please check your connection." } as ChatMessage]);
+      // Refresh plan status so banner search count updates
+      api.get('/payment/status').then(res => setPlanStatus(res.data)).catch(() => {});
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } };
+      if (axiosErr?.response?.status === 402) {
+        const reason = axiosErr.response.data?.error || 'SUBSCRIPTION_REQUIRED';
+        setSubscriptionReason(reason);
+        setShowSubscriptionModal(true);
+        // Remove the empty placeholder message
+        setMessages(prev => prev.filter(m => !m.isStreaming));
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting to the discovery engine. Please check your connection." } as ChatMessage]);
+      }
     } finally {
       setLoading(false);
     }
@@ -361,6 +404,7 @@ export default function ChatPage() {
   };
 
   return (
+    <>
     <div className="flex h-[calc(100vh-80px)] overflow-hidden">
       {/* === SESSION SIDEBAR === */}
       <div className={cn(
@@ -413,7 +457,43 @@ export default function ChatPage() {
       </div>
 
       {/* === MAIN CHAT AREA === */}
-      <div className="flex-1 overflow-hidden p-4 md:p-8 flex flex-col gap-6">
+      <div className="flex-1 overflow-hidden p-4 md:p-8 flex flex-col gap-4">
+
+      {/* === PRICING BANNER (free users) === */}
+      {planStatus?.plan === 'free' && (
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 shadow-lg">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-yellow-400 text-lg">⚡</span>
+            <div className="min-w-0">
+              <span className="text-white font-bold text-sm">Free Plan</span>
+              <span className="text-slate-400 text-xs ml-2">
+                {planStatus.searchesUsed}/{planStatus.searchLimit} searches used · 3 results per search
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { label: 'StreamMini', sub: '₹199 · 14 days · 7 searches' },
+              { label: 'Stream', sub: '₹349 · 30 days · 14 searches', popular: true },
+              { label: 'StreamMax', sub: '₹1000 · 30 days · 30 searches' },
+            ].map(p => (
+              <button
+                key={p.label}
+                onClick={() => { setSubscriptionReason('SUBSCRIPTION_REQUIRED'); setShowSubscriptionModal(true); }}
+                className={cn(
+                  'text-xs font-bold px-3 py-1.5 rounded-lg transition-all whitespace-nowrap',
+                  p.popular
+                    ? 'bg-yellow-400 text-slate-900 hover:bg-yellow-300'
+                    : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
+                )}
+              >
+                {p.label} <span className="font-normal opacity-70 hidden sm:inline">— {p.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
@@ -773,5 +853,13 @@ export default function ChatPage() {
 
       </div>
     </div>
+
+    <SubscriptionModal
+      open={showSubscriptionModal}
+      reason={subscriptionReason}
+      onClose={() => setShowSubscriptionModal(false)}
+      onSuccess={() => setShowSubscriptionModal(false)}
+    />
+    </>
   );
 }

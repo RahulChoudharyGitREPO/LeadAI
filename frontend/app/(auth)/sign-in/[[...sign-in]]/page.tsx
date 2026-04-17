@@ -12,7 +12,8 @@ export default function SignInPage() {
           <p className="text-slate-500 font-medium">Log in to your Discovery Dashboard</p>
         </div>
 
-        <SignIn 
+        <SignIn
+          forceRedirectUrl="/dashboard/chat"
           appearance={{
             elements: {
               rootBox: "w-full",
