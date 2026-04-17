@@ -10,6 +10,7 @@ const leadsRoutes = require('./routes/leads');
 const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
+const supportRoutes = require('./routes/support');
 const trackActivity = require('./middleware/activity');
 
 const app = express();
@@ -33,6 +34,11 @@ io.on('connection', (socket) => {
 
 // Middleware
 app.use(cors());
+
+// Razorpay webhook needs raw body — must be registered BEFORE bodyParser.json()
+const { handleWebhook } = require('./controllers/paymentController');
+app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+
 app.use(bodyParser.json());
 
 // Health Check
@@ -52,6 +58,7 @@ app.use('/api/leads', leadsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/support', supportRoutes);
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/leadapp';

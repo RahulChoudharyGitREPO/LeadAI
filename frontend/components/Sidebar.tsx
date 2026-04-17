@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Users, 
-  MessageSquare, 
+import {
+  LayoutDashboard,
+  Users,
+  MessageSquare,
   TrendingUp,
   LogOut,
-  Shield
+  Shield,
+  HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApiClient } from '@/lib/api';
@@ -19,6 +20,7 @@ const navItems = [
   { name: 'Leads', href: '/dashboard/leads', icon: Users },
   { name: 'AI Chat', href: '/dashboard/chat', icon: MessageSquare },
   { name: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
+  { name: 'Support', href: '/dashboard/support', icon: HelpCircle },
 ];
 
 interface SidebarProps {

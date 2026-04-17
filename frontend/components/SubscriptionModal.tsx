@@ -47,7 +47,7 @@ const PLANS = [
     guarantee: '25+ guaranteed leads',
     icon: Star,
     color: 'from-yellow-400 to-yellow-500',
-    border: 'border-yellow-400',
+    border: 'border-slate-200',
     badge: null,
     features: [
       '20 results per search (vs 3 on free)',
@@ -69,7 +69,7 @@ const PLANS = [
     guarantee: '60+ guaranteed leads',
     icon: Crown,
     color: 'from-purple-500 to-purple-600',
-    border: 'border-slate-200',
+    border: 'border-yellow-400',
     badge: 'Best Value',
     features: [
       '20 results per search (vs 3 on free)',
@@ -216,7 +216,7 @@ export default function SubscriptionModal({ open, reason = 'SUBSCRIPTION_REQUIRE
         <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50">
           {PLANS.map((plan) => {
             const Icon = plan.icon;
-            const isPopular = plan.badge === 'Most Popular';
+            const isPopular = plan.badge === 'Best Value';
             const isLoading = loadingPlan === plan.key;
 
             return (

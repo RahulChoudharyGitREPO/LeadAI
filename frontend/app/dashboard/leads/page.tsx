@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import LeadFormModal from '@/components/LeadFormModal';
-import { 
+import {
   Phone,
   MessageCircle,
   FileDown,
@@ -11,7 +11,12 @@ import {
   UserCheck,
   Trash2,
   Flame,
-  Zap
+  Zap,
+  Send,
+  Loader2,
+  CheckSquare,
+  Square,
+  ExternalLink,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,6 +56,9 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
   const [quickFilter, setQuickFilter] = useState<'all' | 'hot' | 'high_opp'>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkPitch, setShowBulkPitch] = useState(false);
+  const [pitches, setPitches] = useState<{ lead: Lead; message: string; loading: boolean }[]>([]);
   const { api, isLoaded, userId } = useApiClient();
 
   const fetchLeads = useCallback(async () => {
@@ -145,6 +153,48 @@ export default function LeadsPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredLeads.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredLeads.map(l => l._id as string)));
+    }
+  };
+
+  const openBulkPitch = async () => {
+    const selected = filteredLeads.filter(l => selectedIds.has(l._id as string));
+    if (selected.length === 0) return toast.info('Select at least one lead');
+    const initial = selected.map(lead => ({ lead, message: '', loading: true }));
+    setPitches(initial);
+    setShowBulkPitch(true);
+
+    // Generate pitches in parallel
+    const updated = await Promise.all(
+      selected.map(async (lead) => {
+        try {
+          const res = await api.post('/chat/generate-pitch', {
+            leadName: lead.name,
+            service: lead.service || '',
+            description: lead.description || lead.notes?.[0]?.text || '',
+            location: lead.location || '',
+          });
+          return { lead, message: res.data.pitch, loading: false };
+        } catch {
+          return { lead, message: `Hi ${lead.name}, I found your business online and would love to discuss how we can help grow your customer base. Can we connect?`, loading: false };
+        }
+      })
+    );
+    setPitches(updated);
+  };
+
   return (
     <>
       <div className="p-4 md:p-8 space-y-8">
@@ -155,10 +205,15 @@ export default function LeadsPage() {
           <p className="text-slate-500 mt-1 font-medium italic">Manage every conversion in one place.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-           <Button onClick={exportToCSV} variant="outline" className="h-11 px-4 rounded-xl bg-white/50 border-none shadow-sm flex items-center gap-2 hover:bg-white transition-all font-bold text-sm">
-              <FileDown className="w-4 h-4" /> Export
-           </Button>
-           <LeadFormModal onLeadAdded={fetchLeads} />
+          {selectedIds.size > 0 && (
+            <Button onClick={openBulkPitch} className="h-11 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white border-none shadow-sm flex items-center gap-2 font-bold text-sm">
+              <Send className="w-4 h-4" /> Bulk Pitch ({selectedIds.size})
+            </Button>
+          )}
+          <Button onClick={exportToCSV} variant="outline" className="h-11 px-4 rounded-xl bg-white/50 border-none shadow-sm flex items-center gap-2 hover:bg-white transition-all font-bold text-sm">
+            <FileDown className="w-4 h-4" /> Export
+          </Button>
+          <LeadFormModal onLeadAdded={fetchLeads} />
         </div>
       </div>
 
@@ -218,7 +273,14 @@ export default function LeadsPage() {
               <Table>
                 <TableHeader className="bg-slate-50/20">
                   <TableRow className="hover:bg-transparent border-none">
-                    <TableHead className="py-6 pl-8 text-slate-400 font-bold uppercase text-[10px] tracking-widest min-w-[200px]">Lead Details</TableHead>
+                    <TableHead className="py-6 pl-6 w-10">
+                      <button onClick={toggleSelectAll} className="text-slate-400 hover:text-yellow-600 transition-colors">
+                        {selectedIds.size === filteredLeads.length && filteredLeads.length > 0
+                          ? <CheckSquare className="w-4 h-4 text-yellow-500" />
+                          : <Square className="w-4 h-4" />}
+                      </button>
+                    </TableHead>
+                    <TableHead className="py-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest min-w-50">Lead Details</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Service</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">AI Score</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Status</TableHead>
@@ -228,8 +290,15 @@ export default function LeadsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredLeads.map((lead) => (
-                    <TableRow key={lead._id} className="group hover:bg-white/50 border-none transition-all duration-300">
-                      <TableCell className="py-6 pl-8">
+                    <TableRow key={lead._id} className={`group hover:bg-white/50 border-none transition-all duration-300 ${selectedIds.has(lead._id as string) ? 'bg-yellow-50/50' : ''}`}>
+                      <TableCell className="py-6 pl-6 w-10">
+                        <button onClick={() => toggleSelect(lead._id as string)} className="text-slate-400 hover:text-yellow-600 transition-colors">
+                          {selectedIds.has(lead._id as string)
+                            ? <CheckSquare className="w-4 h-4 text-yellow-500" />
+                            : <Square className="w-4 h-4" />}
+                        </button>
+                      </TableCell>
+                      <TableCell className="py-6">
                         <div className="flex items-center gap-4">
                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm ${
                             lead.leadScore === 'Hot' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'
@@ -326,6 +395,74 @@ export default function LeadsPage() {
             </div>
           </div>
     </div>
+
+      {/* Bulk WhatsApp Pitch Modal */}
+      <Dialog open={showBulkPitch} onOpenChange={(open) => !open && setShowBulkPitch(false)}>
+        <DialogContent className="glass border-none shadow-2xl sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-green-500" /> Bulk WhatsApp Pitch
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              AI-generated personalised messages for {pitches.length} leads. Review and send each one.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-1">
+            {pitches.map(({ lead, message, loading: isLoading }, i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="font-black text-slate-900 text-sm">{lead.name}</p>
+                    <p className="text-xs text-slate-400">{lead.phone} · {lead.service}</p>
+                  </div>
+                  {!isLoading && lead.phone && lead.phone !== 'N/A' && (
+                    <a
+                      href={`https://wa.me/${lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all"
+                    >
+                      <ExternalLink className="w-3 h-3" /> Send
+                    </a>
+                  )}
+                </div>
+                {isLoading ? (
+                  <div className="flex items-center gap-2 text-slate-400 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Generating message…
+                  </div>
+                ) : (
+                  <textarea
+                    value={message}
+                    onChange={e => setPitches(prev => prev.map((p, j) => j === i ? { ...p, message: e.target.value } : p))}
+                    className="w-full text-sm text-slate-700 bg-slate-50 rounded-xl p-3 border border-slate-100 resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    rows={3}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="mt-2 flex flex-row gap-3 sm:justify-end border-t border-slate-100 pt-4">
+            <Button variant="ghost" onClick={() => setShowBulkPitch(false)} className="font-bold rounded-xl">Close</Button>
+            <a
+              href={pitches
+                .filter(p => !p.loading && p.lead.phone && p.lead.phone !== 'N/A')
+                .map(p => `https://wa.me/${p.lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(p.message)}`)
+                .join(' ')}
+              onClick={(e) => {
+                e.preventDefault();
+                pitches.filter(p => !p.loading && p.lead.phone && p.lead.phone !== 'N/A').forEach((p, i) => {
+                  setTimeout(() => window.open(`https://wa.me/${p.lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(p.message)}`, '_blank'), i * 500);
+                });
+              }}
+              className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all"
+            >
+              <Send className="w-4 h-4" /> Send All on WhatsApp
+            </a>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!deleteLeadId} onOpenChange={(open) => !open && setDeleteLeadId(null)}>
         <DialogContent className="glass border-none shadow-2xl p-6 sm:max-w-md">
