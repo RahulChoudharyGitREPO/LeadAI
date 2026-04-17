@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Check, Zap, Star, Crown, Search, Brain, MapPin, Mail, FileDown, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -177,7 +177,7 @@ export default function SubscriptionModal({ open, reason = 'SUBSCRIPTION_REQUIRE
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 px-8 pt-8 pb-6 text-center">
           <button

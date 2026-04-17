@@ -461,21 +461,21 @@ export default function ChatPage() {
 
       {/* === PRICING BANNER (free users) === */}
       {planStatus?.plan === 'free' && (
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 shadow-lg">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 shadow-lg">
+          <div className="flex items-center gap-2 sm:flex-1 min-w-0">
             <span className="text-yellow-400 text-lg">⚡</span>
             <div className="min-w-0">
               <span className="text-white font-bold text-sm">Free Plan</span>
               <span className="text-slate-400 text-xs ml-2">
-                {planStatus.searchesUsed}/{planStatus.searchLimit} searches used · 3 results per search
+                {planStatus.searchesUsed}/{planStatus.searchLimit} searches · 3 results each
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {[
-              { label: 'StreamMini', sub: '₹199 · 14 days · 7 searches' },
-              { label: 'Stream', sub: '₹349 · 30 days · 14 searches', popular: true },
-              { label: 'StreamMax', sub: '₹1000 · 30 days · 30 searches' },
+              { label: 'StreamMini', price: '₹199', popular: false },
+              { label: 'Stream', price: '₹349', popular: true },
+              { label: 'StreamMax', price: '₹1000', popular: false },
             ].map(p => (
               <button
                 key={p.label}
@@ -487,7 +487,7 @@ export default function ChatPage() {
                     : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
                 )}
               >
-                {p.label} <span className="font-normal opacity-70 hidden sm:inline">— {p.sub}</span>
+                {p.label} <span className="font-normal opacity-80">{p.price}</span>
               </button>
             ))}
           </div>
@@ -534,7 +534,7 @@ export default function ChatPage() {
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-10 space-y-8">
               {messages.map((msg, msgIdx) => (
                 <div key={msgIdx} className={cn(
-                  "flex flex-col gap-2 max-w-[85%]",
+                  "flex flex-col gap-2 max-w-[92%] sm:max-w-[85%]",
                   msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
                 )}>
                   <div className={cn(
@@ -576,7 +576,7 @@ export default function ChatPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full">
                         {msg.leads.map((lead, leadIdx) => {
                           const isSaved = lead.isDuplicate || lead.isSaved;
                           return (
@@ -730,7 +730,7 @@ export default function ChatPage() {
               )}
             </div>
 
-            <div className="p-8 bg-white/60 backdrop-blur-md border-t border-slate-200/50">
+            <div className="p-4 md:p-8 bg-white/60 backdrop-blur-md border-t border-slate-200/50">
               <div className="max-w-4xl mx-auto relative group">
                 <Compass className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 group-focus-within:text-yellow-500 transition-colors" />
                 <Input 
