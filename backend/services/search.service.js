@@ -85,7 +85,8 @@ function rankResults(results) {
       (r.phone && r.phone !== 'N/A' ? 3 : 0) +
       (r.isLocal ? 2 : 0) +
       (r.hasWebsite ? 1 : 0) +
-      Math.min(r.rating || 0, 2);
+      Math.min(r.rating || 0, 2) +
+      (r.dataQuality || 0) * 0.5;
     return score(b) - score(a);
   });
 }
@@ -263,7 +264,7 @@ async function searchWeb(niche, location, requiresNoWebsite = false, synonyms = 
   } catch (error) {
     // Fix #7: Detect failure type from HTTP status
     const status = error.response?.status;
-    const failureType = (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') ? 'TIMEOUT'
+    const failureType = (['ECONNABORTED','ETIMEDOUT','ENOTFOUND','ECONNRESET'].includes(error.code)) ? 'TIMEOUT'
                       : status === 429 ? 'RATE_LIMITED'
                       : status === 403 ? 'BLOCKED'
                       : 'API_ERROR';

@@ -17,9 +17,10 @@ async function checkSubscription(userId) {
     return { allowed: true, resultsLimit: PAID_RESULTS_LIMIT };
   }
 
-  // Paid plans: check expiry first
+  // Paid plans: check expiry with 60s grace buffer
+  const GRACE_MS = 60 * 1000;
   if (user.plan !== 'free') {
-    if (!user.subscriptionEnd || user.subscriptionEnd <= new Date()) {
+    if (!user.subscriptionEnd || user.subscriptionEnd.getTime() + GRACE_MS < Date.now()) {
       return { allowed: false, reason: 'SUBSCRIPTION_EXPIRED' };
     }
   }

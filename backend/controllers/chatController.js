@@ -140,7 +140,7 @@ const processChat = async (req, res) => {
               : subCheck.reason === 'SUBSCRIPTION_EXPIRED'
               ? 'Your plan has expired. Please renew to continue.'
               : `Search limit reached (${subCheck.searchesUsed}/${subCheck.searchLimit}). Upgrade to search more.`;
-            return res.status(402).json({ error: subCheck.reason, message, plans: PLANS });
+            return res.status(402).json({ error: subCheck.reason, message, plans: PLANS, searchesRemaining: 0 });
           }
 
           try {
@@ -261,17 +261,22 @@ const processChat = async (req, res) => {
 
             // Step 3: AI Score + Intent Detection — Fix #10: emit each lead as soon as scored
             if (io) io.to(userId).emit('pipeline_progress', { step: 'scoring', count: cleanedLeads.length });
+            const stableId = (l) => l.phone && l.phone !== 'N/A' ? l.phone : l.website || `${l.name}-${l.location}`;
             await batchScoreLeads(cleanedLeads, (lead, index) => {
-              if (io) io.to(userId).emit('lead_stream', { ...lead, order: index });
+              if (io) io.to(userId).emit('lead_stream', { ...lead, id: stableId(lead), order: index });
             });
             if (io) io.to(userId).emit('pipeline_progress', { step: 'done', count: cleanedLeads.length });
 
-            // Emit final re-ranked order by aiScore + dataQuality
+            // Emit final re-ranked order by aiScore + (dataQuality * 0.5)
             if (io) {
               const reranked = [...cleanedLeads].sort((a, b) =>
-                ((b.aiScore || 0) + (b.dataQuality || 0)) - ((a.aiScore || 0) + (a.dataQuality || 0))
+                ((b.aiScore || 0) + (b.dataQuality || 0) * 0.5) - ((a.aiScore || 0) + (a.dataQuality || 0) * 0.5)
               );
-              io.to(userId).emit('lead_rerank', reranked.map((l, i) => ({ id: l.name, order: i })));
+              io.to(userId).emit('lead_rerank', reranked.map((l, i) => ({
+                id: stableId(l),
+                order: i,
+                finalScore: (l.aiScore || 0) + (l.dataQuality || 0) * 0.5
+              })));
             }
 
             result = cleanedLeads;
