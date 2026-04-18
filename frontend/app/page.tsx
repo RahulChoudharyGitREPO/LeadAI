@@ -13,12 +13,12 @@ const PLANS = [
     searches: 7,
     baseSearches: 5,
     freeSearches: 2,
-    guarantee: '10+ guaranteed leads',
+    guarantee: '10+ business insights',
     icon: Zap,
     color: 'from-blue-500 to-blue-600',
     badge: null,
     popular: false,
-    features: ['7 discovery searches', '20 results per search', 'AI lead scoring', 'WhatsApp pitch generator', 'CSV export'],
+    features: ['7 discovery credits', '20 results per search', 'AI relevance scoring', 'Contact data enrichment', 'CSV export'],
   },
   {
     key: 'stream',
@@ -28,12 +28,12 @@ const PLANS = [
     searches: 14,
     baseSearches: 10,
     freeSearches: 4,
-    guarantee: '25+ guaranteed leads',
+    guarantee: '25+ business insights',
     icon: Star,
     color: 'from-yellow-400 to-yellow-500',
     badge: null,
     popular: false,
-    features: ['14 discovery searches', 'Everything in StreamMini', 'Email & LinkedIn enrichment', 'Multi-location search', 'Chat history'],
+    features: ['14 discovery credits', 'Everything in StreamMini', 'Email & LinkedIn enrichment', 'Multi-location research', 'Search history'],
   },
   {
     key: 'streamMax',
@@ -43,12 +43,12 @@ const PLANS = [
     searches: 30,
     baseSearches: 20,
     freeSearches: 10,
-    guarantee: '60+ guaranteed leads',
+    guarantee: '60+ business insights',
     icon: Crown,
     color: 'from-purple-500 to-purple-600',
     badge: 'Most Popular',
     popular: true,
-    features: ['30 discovery searches', 'Everything in Stream', 'Intent query expansion', 'Multi-city campaigns', 'Priority processing'],
+    features: ['30 discovery credits', 'Everything in Stream', 'Intent query expansion', 'Multi-city research', 'Priority processing'],
   },
 ];
 
@@ -59,17 +59,17 @@ export default function Home() {
       <div className="max-w-4xl w-full text-center space-y-8 px-8 pt-20 pb-24">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-700 font-bold text-sm animate-bounce">
           <Sparkles className="w-4 h-4" />
-          <span>The New Standard in Lead Conversion</span>
+          <span>AI-Powered Business Discovery Platform</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-tight px-2">
-          Discover & Convert <br />
-          <span className="text-yellow-500">Premium Leads</span>
+          Discover Local Businesses <br />
+          <span className="text-yellow-500">& Gain Market Insights</span>
         </h1>
 
         <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto font-medium px-4">
-          Our AI-powered discovery engine searches the live web, deep-scrapes contact data,
-          and scores every opportunity based on digital presence.
+          Our AI-powered discovery engine searches the live web, analyses business data,
+          and scores every result based on relevance and digital presence.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
@@ -82,9 +82,9 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-20">
-          <FeatureCard icon={Zap} title="AI Discovery Hub" desc="Find high-value business leads across the live web in seconds." />
-          <FeatureCard icon={Target} title="Smart Scoring" desc="Automatically identify 'Hot' opportunities using AI intent signals." />
-          <FeatureCard icon={Sparkles} title="Deep Enrichment" desc="Automated contact extraction including emails and LinkedIn profiles." />
+          <FeatureCard icon={Zap} title="AI Discovery Hub" desc="Discover local businesses and market opportunities across the live web in seconds." />
+          <FeatureCard icon={Target} title="Relevance Scoring" desc="Automatically rank businesses by relevance using AI-powered signals." />
+          <FeatureCard icon={Sparkles} title="Data Enrichment" desc="Automated contact and profile data extraction including emails and LinkedIn." />
         </div>
       </div>
 
@@ -97,7 +97,7 @@ export default function Home() {
               Simple Pricing
             </div>
             <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Start Free. Scale When Ready.</h2>
-            <p className="text-slate-400 text-lg">2 free searches included. No credit card required to start.</p>
+            <p className="text-slate-400 text-lg">2 free discovery credits included. No credit card required to start.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -135,7 +135,7 @@ export default function Home() {
                     <span className="text-xl font-bold text-slate-900">{plan.baseSearches}</span>
                     <span className="text-xs text-slate-500 mx-1">+</span>
                     <span className="text-base font-bold text-green-600">{plan.freeSearches} free</span>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{plan.searches} total searches</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{plan.searches} total discovery credits</p>
                   </div>
 
                   <ul className="space-y-2 mb-6 flex-1">

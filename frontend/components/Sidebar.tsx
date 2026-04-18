@@ -17,7 +17,7 @@ import { useApiClient } from '@/lib/api';
 
 const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Leads', href: '/dashboard/leads', icon: Users },
+  { name: 'Businesses', href: '/dashboard/leads', icon: Users },
   { name: 'AI Chat', href: '/dashboard/chat', icon: MessageSquare },
   { name: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
   { name: 'Support', href: '/dashboard/support', icon: HelpCircle },

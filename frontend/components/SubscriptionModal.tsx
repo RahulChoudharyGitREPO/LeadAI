@@ -28,11 +28,11 @@ const PLANS = [
     border: 'border-slate-200',
     badge: null,
     features: [
-      '20 results per search (vs 3 on free)',
+      '20 results per credit (vs 3 on free)',
       'Google + Maps engine search',
-      'AI lead scoring (1–10)',
-      'WhatsApp pitch generator',
-      'Export leads to CSV',
+      'AI relevance scoring (1–10)',
+      'Contact data enrichment',
+      'Export results to CSV',
     ],
   },
   {
@@ -50,11 +50,11 @@ const PLANS = [
     border: 'border-slate-200',
     badge: null,
     features: [
-      '20 results per search (vs 3 on free)',
+      '20 results per credit (vs 3 on free)',
       'Everything in StreamMini',
       'Contact enrichment (email & LinkedIn)',
-      'Multi-location fallback search',
-      'Session history & saved chats',
+      'Multi-location research',
+      'Search history & saved sessions',
     ],
   },
   {
@@ -72,10 +72,10 @@ const PLANS = [
     border: 'border-yellow-400',
     badge: 'Best Value',
     features: [
-      '20 results per search (vs 3 on free)',
+      '20 results per credit (vs 3 on free)',
       'Everything in Stream',
       'Synonym & intent query expansion',
-      'Multi-city campaigns',
+      'Multi-city research',
       'Priority AI pipeline processing',
     ],
   },
@@ -83,16 +83,16 @@ const PLANS = [
 
 const REASON_COPY: Record<string, { title: string; subtitle: string }> = {
   SUBSCRIPTION_REQUIRED: {
-    title: "You've Used Your 2 Free Searches",
-    subtitle: 'Free plan includes 2 searches with 3 results each. Upgrade for 20 results per search and more.',
+    title: "You've Used Your 2 Free Credits",
+    subtitle: 'Free plan includes 2 discovery credits with 3 results each. Upgrade for 20 results per credit and more.',
   },
   SUBSCRIPTION_EXPIRED: {
     title: 'Your Plan Has Expired',
-    subtitle: 'Renew to keep discovering leads and growing your pipeline.',
+    subtitle: 'Renew to keep discovering businesses and gaining market insights.',
   },
   SEARCH_LIMIT_REACHED: {
-    title: "You've Used All Your Searches",
-    subtitle: 'Upgrade to a higher plan and keep the momentum going.',
+    title: "You've Used All Your Credits",
+    subtitle: 'Upgrade to a higher plan to continue discovering businesses.',
   },
 };
 
@@ -179,7 +179,7 @@ export default function SubscriptionModal({ open, reason = 'SUBSCRIPTION_REQUIRE
       {/* Modal */}
       <div className="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto">
         {/* Header */}
-        <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 px-8 pt-8 pb-6 text-center">
+        <div className="relative bg-linear-to-br from-slate-900 to-slate-800 px-8 pt-8 pb-6 text-center">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
@@ -240,7 +240,7 @@ export default function SubscriptionModal({ open, reason = 'SUBSCRIPTION_REQUIRE
 
                 {/* Icon + Name */}
                 <div className="flex items-center gap-2 mb-3">
-                  <div className={cn('w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white', plan.color)}>
+                  <div className={cn('w-8 h-8 rounded-lg bg-linear-to-br flex items-center justify-center text-white', plan.color)}>
                     <Icon size={16} />
                   </div>
                   <div>

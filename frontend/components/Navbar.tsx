@@ -52,7 +52,7 @@ export default function Navbar({ onMenuClick, onUpgradeClick }: NavbarProps) {
             )}
           >
             <Zap className="w-3.5 h-3.5" />
-            {searchesLeft === -1 ? 'Unlimited' : searchesLeft === 0 ? 'No searches left · Upgrade' : `${searchesLeft} searches left`}
+            {searchesLeft === -1 ? 'Unlimited' : searchesLeft === 0 ? 'No credits left · Upgrade' : `${searchesLeft} credits remaining`}
           </button>
         )}
 

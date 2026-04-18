@@ -46,6 +46,7 @@ import {
 import { toast } from 'sonner';
 import type { Lead, LeadStatus } from '@/lib/types';
 import { useApiClient } from '@/lib/api';
+import { SAFE_MODE } from '@/lib/config';
 
 const LEAD_STATUSES: LeadStatus[] = ['new', 'contacted', 'booked', 'closed'];
 
@@ -201,13 +202,13 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Leads CRM</h1>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Businesses CRM</h1>
           <p className="text-slate-500 mt-1 font-medium italic">Manage every conversion in one place.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          {selectedIds.size > 0 && (
+          {!SAFE_MODE && selectedIds.size > 0 && (
             <Button onClick={openBulkPitch} className="h-11 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white border-none shadow-sm flex items-center gap-2 font-bold text-sm">
-              <Send className="w-4 h-4" /> Bulk Pitch ({selectedIds.size})
+              <Send className="w-4 h-4" /> Message Drafts ({selectedIds.size})
             </Button>
           )}
           <Button onClick={exportToCSV} variant="outline" className="h-11 px-4 rounded-xl bg-white/50 border-none shadow-sm flex items-center gap-2 hover:bg-white transition-all font-bold text-sm">
@@ -280,11 +281,11 @@ export default function LeadsPage() {
                           : <Square className="w-4 h-4" />}
                       </button>
                     </TableHead>
-                    <TableHead className="py-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest min-w-50">Lead Details</TableHead>
+                    <TableHead className="py-6 text-slate-400 font-bold uppercase text-[10px] tracking-widest min-w-50">Business Details</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Service</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">AI Score</TableHead>
                     <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Status</TableHead>
-                    <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Score</TableHead>
+                    <TableHead className="text-slate-400 font-bold uppercase text-[10px] tracking-widest text-center">Relevance</TableHead>
                     <TableHead className="pr-8 text-slate-400 font-bold uppercase text-[10px] tracking-widest text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>

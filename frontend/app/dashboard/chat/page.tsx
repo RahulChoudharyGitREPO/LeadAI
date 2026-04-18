@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { SOCKET_URL, useApiClient } from '@/lib/api';
 import type { Lead, ChatMessage, ChatSession } from '@/lib/types';
 import SubscriptionModal from '@/components/SubscriptionModal';
+import { SAFE_MODE } from '@/lib/config';
 
 
 export default function ChatPage() {
@@ -467,7 +468,7 @@ export default function ChatPage() {
             <div className="min-w-0">
               <span className="text-white font-bold text-sm">Free Plan</span>
               <span className="text-slate-400 text-xs ml-2">
-                {planStatus.searchesUsed}/{planStatus.searchLimit} searches · 3 results each
+                {planStatus.searchesUsed}/{planStatus.searchLimit} credits used · 3 results each
               </span>
             </div>
           </div>
@@ -692,9 +693,9 @@ export default function ChatPage() {
                                 </Button>
                               )}
 
-                              {lead.phone && lead.phone !== 'N/A' && (
-                                <Button 
-                                  onClick={(e) => { e.stopPropagation(); sendWhatsAppPitch(lead); }} 
+                              {!SAFE_MODE && lead.phone && lead.phone !== 'N/A' && (
+                                <Button
+                                  onClick={(e) => { e.stopPropagation(); sendWhatsAppPitch(lead); }}
                                   disabled={pitchLoadingId === lead.name}
                                   className="w-full h-[42px] rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-bold shadow-md hover:shadow-lg transition-all gap-2"
                                 >
