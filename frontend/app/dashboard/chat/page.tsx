@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
+import {
   Send,
   Loader2,
   Globe,
@@ -17,7 +17,8 @@ import {
   FileDown,
   MessageSquarePlus,
   Clock,
-  X
+  X,
+  BookMarked
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,8 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const [lastScan, setLastScan] = useState<number | null>(null);
+  const [lastSearchParams, setLastSearchParams] = useState<{ niche: string; location: string } | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [timeAgoStr, setTimeAgoStr] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isClearChatOpen, setIsClearChatOpen] = useState(false);
@@ -221,6 +224,23 @@ export default function ChatPage() {
     toast.success('Chat cleared');
   };
 
+  const saveTemplate = async () => {
+    if (!lastSearchParams) return;
+    setSavingTemplate(true);
+    try {
+      await api.post('/templates', {
+        name: lastSearchParams.niche,
+        niche: lastSearchParams.niche,
+        location: lastSearchParams.location,
+      });
+      toast.success('Search saved as template');
+    } catch {
+      toast.error('Failed to save template');
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
   const exportToCSV = () => {
     let allLeads: Lead[] = [];
     messages.forEach(m => {
@@ -312,6 +332,12 @@ export default function ChatPage() {
 
       setLastScan(new Date().getTime());
       setTimeAgoStr('Just now');
+      const parts = resolvedInput.split(/\bin\b/i);
+      if (parts.length >= 2) {
+        setLastSearchParams({ niche: parts[0].trim(), location: parts[1].trim() });
+      } else {
+        setLastSearchParams({ niche: resolvedInput.trim(), location: '' });
+      }
       // Refresh plan status so banner search count updates
       api.get('/payment/status').then(res => setPlanStatus(res.data)).catch(() => {});
     } catch (err: unknown) {
@@ -373,9 +399,23 @@ export default function ChatPage() {
         return newMsgs;
       });
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-      console.error('Save lead error:', errorMsg);
-      toast.error('Failed to save lead');
+      const axiosErr = err as { response?: { status?: number } };
+      if (axiosErr?.response?.status === 409) {
+        toast.info(`${lead.name} is already in your CRM`);
+        setMessages(prev => {
+          const newMsgs = [...prev];
+          const msg = { ...newMsgs[msgIdx] };
+          if (msg.leads) {
+            const newLeads = [...msg.leads];
+            newLeads[leadIdx] = { ...newLeads[leadIdx], isSaved: true, isDuplicate: true };
+            msg.leads = newLeads;
+          }
+          newMsgs[msgIdx] = msg;
+          return newMsgs;
+        });
+      } else {
+        toast.error('Failed to save lead');
+      }
     }
   };
 
@@ -519,6 +559,12 @@ export default function ChatPage() {
              <Button onClick={exportToCSV} variant="outline" size="sm" className="h-9 px-3 border-slate-200 text-slate-600 bg-white shadow-sm hover:shadow-md rounded-lg text-xs md:text-sm">
                <FileDown className="w-4 h-4 mr-2" /> Export
              </Button>
+             {lastSearchParams && (
+               <Button onClick={saveTemplate} disabled={savingTemplate} variant="outline" size="sm" className="h-9 px-3 border-slate-200 text-slate-600 bg-white shadow-sm hover:shadow-md rounded-lg text-xs md:text-sm">
+                 <BookMarked className="w-4 h-4 mr-2" />
+                 {savingTemplate ? 'Saving…' : 'Save Search'}
+               </Button>
+             )}
              <div className="flex items-center gap-2 bg-green-500/10 px-3 md:px-4 py-2 rounded-xl border border-green-500/20 shadow-sm">
                <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                <span className="text-[10px] md:text-xs font-bold text-green-700 uppercase tracking-widest">Active</span>
@@ -636,6 +682,9 @@ export default function ChatPage() {
                                        <div className="flex items-center gap-2 text-xs font-bold tracking-wide">
                                          <span className="text-slate-400">✉</span>
                                          <span className="text-blue-600 truncate">{lead.email}</span>
+                                         {lead.emailSource === 'hunter' && (
+                                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-600">✓ Verified</span>
+                                         )}
                                        </div>
                                      )}
                                      {lead.linkedIn && (

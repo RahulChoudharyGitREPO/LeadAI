@@ -10,7 +10,8 @@ import {
   TrendingUp,
   LogOut,
   Shield,
-  HelpCircle
+  HelpCircle,
+  BookMarked
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApiClient } from '@/lib/api';
@@ -19,6 +20,7 @@ const navItems = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Businesses', href: '/dashboard/leads', icon: Users },
   { name: 'AI Chat', href: '/dashboard/chat', icon: MessageSquare },
+  { name: 'Templates', href: '/dashboard/templates', icon: BookMarked },
   { name: 'Analytics', href: '/dashboard/analytics', icon: TrendingUp },
   { name: 'Support', href: '/dashboard/support', icon: HelpCircle },
 ];

@@ -12,7 +12,7 @@ async function parseSearchQuery(niche, location) {
       model: 'gpt-4o-mini',
       messages: [{
         role: 'user',
-        content: `You are a search query normalizer for a lead discovery system in India.
+        content: `You are a search query normalizer for a global lead discovery system.
 
 Given a business niche and location, return a JSON object.
 

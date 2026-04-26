@@ -235,7 +235,7 @@ async function searchWeb(niche, location, requiresNoWebsite = false, synonyms = 
     const chain = locationChain.length > 1 ? locationChain : [];
     const nextFallback = chain[1] || null; // Fix #7/#8: expose next level for auto-suggest
 
-    if (combined.length === 0 && chain.length > 1) {
+    if (combined.length < 5 && chain.length > 1) {
       for (let i = 1; i < chain.length; i++) {
         const fallbackLoc = chain[i];
         console.log(`[SEARCH] Phase 3: Fallback to "${fallbackLoc}"...`);

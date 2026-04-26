@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    const [leads, total] = await Promise.all([
+    const [leads] = await Promise.all([
       Lead.find(filter)
         .sort({ aiScore: -1, createdAt: -1 })
         .skip(skip)
@@ -89,15 +89,18 @@ router.get('/', async (req, res) => {
 // POST new lead (with duplicate check)
 router.post('/', async (req, res) => {
   try {
-    // Check for duplicates by name + userId (case insensitive)
     const leadName = (req.body.name || '').trim();
-    if (leadName) {
-      const existing = await Lead.findOne({ 
-        userId: req.userId, 
-        name: { $regex: new RegExp('^' + leadName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') }
-      });
+    const leadPhone = (req.body.phone || '').replace(/\D/g, '');
+
+    // Check for duplicates by name OR phone
+    const orConditions = [];
+    if (leadName) orConditions.push({ name: { $regex: new RegExp('^' + leadName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } });
+    if (leadPhone && leadPhone.length >= 7) orConditions.push({ phone: { $regex: leadPhone } });
+
+    if (orConditions.length > 0) {
+      const existing = await Lead.findOne({ userId: req.userId, $or: orConditions });
       if (existing) {
-        return res.status(409).json({ error: 'Lead already exists', lead: existing });
+        return res.status(409).json({ error: 'DUPLICATE', message: 'Already saved', lead: existing });
       }
     }
 

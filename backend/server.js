@@ -11,7 +11,9 @@ const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
 const supportRoutes = require('./routes/support');
+const templateRoutes = require('./routes/templates');
 const trackActivity = require('./middleware/activity');
+const { discoveryLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -55,10 +57,11 @@ app.use('/api', trackActivity);
 
 // Routes
 app.use('/api/leads', leadsRoutes);
-app.use('/api/chat', chatRoutes);
+app.use('/api/chat', discoveryLimiter, chatRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/templates', templateRoutes);
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/leadapp';

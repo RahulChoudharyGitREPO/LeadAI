@@ -15,6 +15,8 @@ export type Lead = {
   date?: string;
   location?: string;
   email?: string;
+  emailSource?: string;
+  emailConfidence?: number;
   website?: string;
   linkedIn?: string;
   status?: LeadStatus;
